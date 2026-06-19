@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import {
   BookOpen, Brain, Sparkles, ArrowRight, Plus,
-  TrendingUp, Calendar, ChevronRight, Clock, Mic
+  TrendingUp, Calendar, ChevronRight, Clock, Mic, Bell
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +18,9 @@ import { ProgressRing } from "@/components/ui/progress-ring"
 import { TodaySummary } from "@/components/ui/today-summary"
 import { WeeklySummary } from "@/components/ui/weekly-summary"
 import { SuccessToast } from "@/components/ui/success-toast"
+import { InstallPrompt } from "@/components/ui/install-prompt"
+import { NotificationBanner } from "@/components/ui/notification-banner"
+import { isSupported, requestPermission } from "@/lib/notifications/service"
 
 const recentEntries = [
   {
@@ -79,7 +82,20 @@ const itemVariants = {
 export default function DashboardPage() {
   const [selectedMood, setSelectedMood] = useState<number | undefined>(undefined)
   const [showToast, setShowToast] = useState(false)
+  const [notifEnabled, setNotifEnabled] = useState(false)
   const streak = 5
+
+  useEffect(() => {
+    if (isSupported()) {
+      setNotifEnabled(Notification.permission === "granted")
+    }
+  }, [])
+
+  const handleToggleNotif = async () => {
+    if (notifEnabled) return
+    const perm = await requestPermission()
+    setNotifEnabled(perm === "granted")
+  }
 
   return (
     <motion.div
@@ -88,6 +104,11 @@ export default function DashboardPage() {
       initial="hidden"
       animate="visible"
     >
+      <NotificationBanner />
+
+      {/* Install Prompt */}
+      <InstallPrompt />
+
       {/* Success Toast */}
       <SuccessToast
         show={showToast}
@@ -141,12 +162,25 @@ export default function DashboardPage() {
           >
             <div className="flex items-start justify-between mb-4">
               <h3 className="text-sm font-semibold text-deep-charcoal">Стрик</h3>
-              <button
-                onClick={() => setShowToast(true)}
-                className="text-[10px] text-orange-500 hover:text-orange-600 transition-colors"
-              >
-                Тест уведомления
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleToggleNotif}
+                  className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] transition-colors ${
+                    notifEnabled
+                      ? "bg-green-50 text-green-600"
+                      : "text-orange-500 hover:text-orange-600"
+                  }`}
+                >
+                  <Bell className="h-3 w-3" />
+                  {notifEnabled ? "Уведомления вкл." : "Включить"}
+                </button>
+                <button
+                  onClick={() => setShowToast(true)}
+                  className="text-[10px] text-orange-500 hover:text-orange-600 transition-colors"
+                >
+                  Тест уведомления
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-6">
               <StreakCounter streak={streak} />

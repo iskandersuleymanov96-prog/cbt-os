@@ -1,13 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   User, Palette, Bell, Sparkles, Shield, CreditCard,
   ChevronRight, Clock, Download,
   Upload, Database, Lock, Smartphone, Key, AlertTriangle,
   Camera, FileText, CheckCircle2, Loader2, HardDrive,
-  RefreshCw, Eye, EyeOff
+  RefreshCw, Eye, EyeOff, Volume2, VolumeX
 } from "lucide-react"
+import { isSupported, requestPermission } from "@/lib/notifications/service"
+import { scheduleReminder, scheduleWeeklySummary, cancelAll } from "@/lib/notifications/scheduler"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
