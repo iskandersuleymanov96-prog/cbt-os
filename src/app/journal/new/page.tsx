@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react"
+import { Suspense, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { ArrowLeft, ArrowRight, Check, Sparkles, Mic } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -74,13 +74,14 @@ const pageVariants = {
   }),
 }
 
-export default function NewJournalEntryPage() {
+function NewJournalEntryInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(0)
   const [direction, setDirection] = useState(1)
   const [showSaved, setShowSaved] = useState(false)
   const [form, setForm] = useState({
-    situation: "",
+    situation: searchParams.get("situation") || "",
     date: new Date().toISOString().slice(0, 16),
     tags: [] as string[],
     emotions: [] as string[],
@@ -219,6 +220,14 @@ export default function NewJournalEntryPage() {
             >
               {currentStep === 0 && (
                 <div className="space-y-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push("/journal/voice")}
+                    className="gap-2 w-full"
+                  >
+                    <Mic className="h-4 w-4" />
+                    Голосовая запись
+                  </Button>
                   <div>
                     <Label htmlFor="situation">Что произошло?</Label>
                     <Textarea
@@ -508,5 +517,13 @@ export default function NewJournalEntryPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function NewJournalEntryPage() {
+  return (
+    <Suspense>
+      <NewJournalEntryInner />
+    </Suspense>
   )
 }

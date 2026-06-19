@@ -5,7 +5,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import {
   BookOpen, Brain, Sparkles, ArrowRight, Plus,
-  TrendingUp, Calendar, ChevronRight, Clock
+  TrendingUp, Calendar, ChevronRight, Clock, Mic
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -388,7 +388,20 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Quick Actions */}
-      <motion.div className="grid gap-4 md:grid-cols-3" variants={itemVariants}>
+      <motion.div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" variants={itemVariants}>
+        <Link href="/journal/voice">
+          <Card className="glass-card group cursor-pointer transition-premium hover:-translate-y-1 hover:shadow-elevated">
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-100 to-red-50 transition-transform group-hover:scale-110">
+                <Mic className="h-6 w-6 text-red-500" />
+              </div>
+              <div>
+                <p className="font-medium">Голосовая запись</p>
+                <p className="text-sm text-muted-foreground">Расскажите о ситуации</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
         <Link href="/patterns">
           <Card className="glass-card group cursor-pointer transition-premium hover:-translate-y-1 hover:shadow-elevated">
             <CardContent className="flex items-center gap-4 p-5">
