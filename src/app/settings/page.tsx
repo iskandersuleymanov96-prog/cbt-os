@@ -73,24 +73,43 @@ export default function SettingsPage() {
     )
   }
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setIsExporting(true)
-    setTimeout(() => {
-      setIsExporting(false)
-      const data = {
-        exportDate: new Date().toISOString(),
-        format: exportFormat,
-        profile: { name: profileName, email: profileEmail, bio: profileBio },
-        settings: { theme, fontSize, compactMode, notificationsEnabled },
+    try {
+      const date = new Date().toISOString().slice(0, 10)
+      const filename = `cbt-os-export-${date}`
+
+      if (exportFormat === "json") {
+        const res = await fetch("/api/export/all?format=json")
+        const data = await res.json()
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${filename}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else if (exportFormat === "csv") {
+        const res = await fetch("/api/export/all?format=csv")
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${filename}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else if (exportFormat === "pdf") {
+        const { generateAllEntriesPDF, downloadBlob } = await import("@/lib/pdf/generator")
+        const entriesRes = await fetch("/api/export/all?format=json")
+        const { entries } = await entriesRes.json()
+        const blob = await generateAllEntriesPDF(entries)
+        downloadBlob(blob, `${filename}.pdf`)
       }
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `cbt-os-export-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-    }, 1500)
+    } catch (err) {
+      console.error("Export failed:", err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
