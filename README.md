@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+[![CI](https://github.com/your-org/cbt-os/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/cbt-os/actions/workflows/ci.yml)
 
-## Getting Started
+# CBT OS
 
-First, run the development server:
+Cognitive Behavioral Therapy operating system — a Next.js application for managing CBT workflows, patients, and treatment plans.
+
+## Prerequisites
+
+- Node.js 20+
+- npm 10+
+- Supabase project (for database and auth)
+- Vercel account (for deployment)
+
+## Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/your-org/cbt-os.git
+cd cbt-os
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Copy the environment template and fill in your values:
+
+```bash
+cp .env.example .env.local
+```
+
+4. Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs at [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start dev server with hot reload |
+| `npm run lint` | Run ESLint |
+| `npx tsc --noEmit` | Type check without emitting |
+| `npm run test:run` | Run tests once |
+| `npm run test` | Run tests in watch mode |
+| `npm run build` | Production build |
 
-## Learn More
+## Testing
 
-To learn more about Next.js, take a look at the following resources:
+Tests use Vitest with React Testing Library and jsdom.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+# Run all tests once
+npm run test:run
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Run in watch mode during development
+npm run test
+```
 
-## Deploy on Vercel
+Place test files next to their source files or in `__tests__/` directories with the `.test.tsx` or `.test.ts` extension.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## CI/CD
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### CI Pipeline
+
+Every push to `main` and every pull request triggers the CI workflow (`.github/workflows/ci.yml`):
+
+1. Install dependencies
+2. Lint
+3. Type check
+4. Run tests
+5. Build
+
+All steps must pass before a PR can be merged.
+
+### Deployment
+
+Pushing to `main` triggers automatic deployment to Vercel (`.github/workflows/deploy.yml`).
+
+**Required secret:** Add `VERCEL_TOKEN` to your repository secrets (Settings → Secrets and variables → Actions).
+
+### Dependency Updates
+
+Dependabot (`.github/dependabot.yml`) opens weekly PRs for minor and patch dependency updates, grouped into a single PR per update type.
+
+## Environment Variables
+
+| Variable | Description | Required |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
+
+See `.env.example` for the full list.
+
+## Project Structure
+
+```
+src/
+├── app/            # Next.js App Router pages and layouts
+├── components/     # React components
+├── lib/            # Utility functions and helpers
+├── store/          # Zustand state management
+└── types/          # TypeScript type definitions
+```
+
+## License
+
+Private — not for public distribution.
