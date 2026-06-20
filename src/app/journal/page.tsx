@@ -1,90 +1,28 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Plus, Search, ChevronRight, Calendar } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/ui/empty-state"
 import { GradientButton } from "@/components/ui/gradient-button"
-
-const mockEntries = [
-  {
-    id: "1",
-    date: "2026-06-19T14:30:00",
-    situation: "Совещание по проекту — начальник критиковал мою работу перед командой",
-    emotion: "Тревога",
-    emotionIcon: "😟",
-    intensity: 7,
-    mood: 3,
-    stress: 7,
-    anxiety: 8,
-    tags: ["работа", "стресс"],
-    distortions: ["Катастрофизация", "Чтение мыслей"],
-  },
-  {
-    id: "2",
-    date: "2026-06-18T21:15:00",
-    situation: "Вечерняя прогулка в парке. Почувствовал себя расслабленным и спокойным",
-    emotion: "Спокойствие",
-    emotionIcon: "😌",
-    intensity: 3,
-    mood: 4,
-    stress: 2,
-    anxiety: 1,
-    tags: ["природа", "отдых"],
-    distortions: [],
-  },
-  {
-    id: "3",
-    date: "2026-06-17T10:00:00",
-    situation: "Получил положительный отзыв от клиента по завершённому проекту",
-    emotion: "Радость",
-    emotionIcon: "😊",
-    intensity: 8,
-    mood: 5,
-    stress: 1,
-    anxiety: 1,
-    tags: ["работа", "успех"],
-    distortions: ["Обесценивание позитива"],
-  },
-  {
-    id: "4",
-    date: "2026-06-16T16:45:00",
-    situation: "Спор с другом из-за мелочи. Почувствовал вину и раздражение",
-    emotion: "Вина",
-    emotionIcon: "😔",
-    intensity: 6,
-    mood: 2,
-    stress: 5,
-    anxiety: 4,
-    tags: ["отношения"],
-    distortions: ["Персонализация", "Долженствование"],
-  },
-  {
-    id: "5",
-    date: "2026-06-15T09:30:00",
-    situation: "Утренняя медитация. Смог сосредоточиться на дыхании на 15 минут",
-    emotion: "Удовлетворение",
-    emotionIcon: "🙂",
-    intensity: 5,
-    mood: 4,
-    stress: 2,
-    anxiety: 2,
-    tags: ["медитация", "здоровье"],
-    distortions: [],
-  },
-]
+import { SkeletonCard } from "@/components/ui/skeleton"
+import { DEMO_ENTRIES, EMOTION_ICONS } from "@/lib/demo-data"
 
 export default function JournalPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [isLoading] = useState(false)
 
-  const filteredEntries = mockEntries.filter(
-    (entry) =>
-      entry.situation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.emotion.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredEntries = useMemo(() => {
+    return DEMO_ENTRIES.filter(
+      (entry) =>
+        entry.situation.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        entry.emotion.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        entry.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+  }, [searchQuery])
 
   return (
     <div className="space-y-6">
@@ -92,7 +30,7 @@ export default function JournalPage() {
         <div>
           <h1 className="text-2xl font-bold text-deep-charcoal">Дневник</h1>
           <p className="text-muted-foreground">
-            {mockEntries.length} записей
+            {DEMO_ENTRIES.length} записей
           </p>
         </div>
         <Link href="/journal/new">
@@ -115,22 +53,28 @@ export default function JournalPage() {
         />
       </div>
 
-      {/* Entries List */}
-      {filteredEntries.length > 0 ? (
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : filteredEntries.length > 0 ? (
         <div className="space-y-3">
           {filteredEntries.map((entry) => (
             <Link key={entry.id} href={`/journal/${entry.id}`}>
               <Card className="glass-card transition-all hover:-translate-y-0.5 hover:card-shadow-hover cursor-pointer">
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4">
-                    <span className="text-3xl">{entry.emotionIcon}</span>
+                    <span className="text-3xl">{EMOTION_ICONS[entry.emotion] || "😐"}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline" className="text-xs">
                           {entry.emotion}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          Интенсивность: {entry.intensity}/10
+                          Интенсивность: {entry.emotion_intensity}/10
                         </span>
                       </div>
                       <p className="text-sm text-foreground mb-2 line-clamp-2">
@@ -139,7 +83,7 @@ export default function JournalPage() {
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {new Date(entry.date).toLocaleDateString("ru-RU", {
+                          {new Date(entry.created_at).toLocaleDateString("ru-RU", {
                             day: "numeric",
                             month: "short",
                             hour: "2-digit",

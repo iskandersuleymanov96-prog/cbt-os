@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { TrendingUp, ChevronRight, Eye, Clock } from "lucide-react"
 import { motion } from "framer-motion"
@@ -9,53 +9,14 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmptyState } from "@/components/ui/empty-state"
 import { GradientButton } from "@/components/ui/gradient-button"
-
-const patterns = {
-  thought: [
-    { id: "t1", name: "«Я не справлюсь»", frequency: 15, strength: 8, firstSeen: "2026-05-01", lastSeen: "2026-06-19" },
-    { id: "t2", name: "«Меня будут критиковать»", frequency: 12, strength: 7, firstSeen: "2026-05-10", lastSeen: "2026-06-18" },
-    { id: "t3", name: "«Я должен быть идеальным»", frequency: 8, strength: 6, firstSeen: "2026-05-15", lastSeen: "2026-06-17" },
-  ],
-  emotion: [
-    { id: "e1", name: "Тревога перед встречами", frequency: 18, strength: 9, firstSeen: "2026-04-20", lastSeen: "2026-06-19" },
-    { id: "e2", name: "Вина после конфликтов", frequency: 10, strength: 6, firstSeen: "2026-05-05", lastSeen: "2026-06-16" },
-  ],
-  trigger: [
-    { id: "tr1", name: "Рабочие совещания", frequency: 20, strength: 10, firstSeen: "2026-04-15", lastSeen: "2026-06-19" },
-    { id: "tr2", name: "Критика от руководства", frequency: 14, strength: 8, firstSeen: "2026-05-01", lastSeen: "2026-06-18" },
-    { id: "tr3", name: "Конфликты с близкими", frequency: 7, strength: 5, firstSeen: "2026-05-20", lastSeen: "2026-06-16" },
-  ],
-  distortion: [
-    { id: "d1", name: "Катастрофизация", frequency: 12, strength: 7, firstSeen: "2026-05-01", lastSeen: "2026-06-19" },
-    { id: "d2", name: "Чтение мыслей", frequency: 9, strength: 6, firstSeen: "2026-05-10", lastSeen: "2026-06-18" },
-    { id: "d3", name: "Долженствование", frequency: 8, strength: 5, firstSeen: "2026-05-15", lastSeen: "2026-06-17" },
-  ],
-  behavior: [
-    { id: "b1", name: "Избегание совещаний", frequency: 11, strength: 7, firstSeen: "2026-05-01", lastSeen: "2026-06-19" },
-    { id: "b2", name: "Перфекционизм в работе", frequency: 14, strength: 8, firstSeen: "2026-04-25", lastSeen: "2026-06-18" },
-  ],
-}
-
-const typeLabels: Record<string, string> = {
-  thought: "Мысли",
-  emotion: "Эмоции",
-  trigger: "Триггеры",
-  distortion: "Искажения",
-  behavior: "Поведение",
-}
-
-const typeColors: Record<string, string> = {
-  thought: "bg-blue-100 text-blue-700",
-  emotion: "bg-purple-100 text-purple-700",
-  trigger: "bg-orange-100 text-orange-700",
-  distortion: "bg-red-100 text-red-700",
-  behavior: "bg-green-100 text-green-700",
-}
+import { DEMO_PATTERNS, PATTERN_TYPE_LABELS, PATTERN_TYPE_COLORS } from "@/lib/demo-data"
 
 export default function PatternsPage() {
   const [activeTab, setActiveTab] = useState("thought")
 
-  const hasAnyPatterns = Object.values(patterns).some((arr) => arr.length > 0)
+  const hasAnyPatterns = useMemo(() => {
+    return Object.values(DEMO_PATTERNS).some((arr) => arr.length > 0)
+  }, [])
 
   if (!hasAnyPatterns) {
     return (
@@ -101,22 +62,22 @@ export default function PatternsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start">
-          {Object.keys(patterns).map((type) => (
+          {Object.keys(DEMO_PATTERNS).map((type) => (
             <TabsTrigger key={type} value={type} className="gap-1">
-              {typeLabels[type]}
+              {PATTERN_TYPE_LABELS[type]}
               <Badge variant="secondary" className="ml-1 text-[10px]">
-                {patterns[type as keyof typeof patterns].length}
+                {DEMO_PATTERNS[type].length}
               </Badge>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {Object.entries(patterns).map(([type, items]) => (
+        {Object.entries(DEMO_PATTERNS).map(([type, items]) => (
           <TabsContent key={type} value={type} className="space-y-3 mt-4">
             {items.length === 0 ? (
               <EmptyState
                 icon="🔍"
-                title={`Нет паттернов типа «${typeLabels[type]}»`}
+                title={`Нет паттернов типа «${PATTERN_TYPE_LABELS[type]}»`}
                 description="Продолжайте вести дневник, и мы обнаружим повторяющиеся модели."
               />
             ) : (
@@ -134,8 +95,8 @@ export default function PatternsPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3 className="font-semibold text-deep-charcoal">{pattern.name}</h3>
-                              <Badge className={typeColors[type]}>
-                                {typeLabels[type]}
+                              <Badge className={PATTERN_TYPE_COLORS[type]}>
+                                {PATTERN_TYPE_LABELS[type]}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">

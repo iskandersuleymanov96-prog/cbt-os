@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useCallback, useMemo } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Edit3, Trash2, Copy, Download, Calendar, Tag, Brain, TrendingDown, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,41 +9,31 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import type { JournalEntry } from "@/types"
+import { DEMO_ENTRIES, EMOTION_ICONS } from "@/lib/demo-data"
 
-const mockEntry: JournalEntry & { distortions: string[] } = {
-  id: "1",
-  user_id: "demo",
-  created_at: "2026-06-19T14:30:00Z",
-  situation: "Совещание по проекту — начальник критиковал мою работу перед командой. Он сказал, что сроки сорваны и это моя вина, хотя часть задач зависла из-за других отделов.",
-  emotion: "Тревога",
-  emotion_intensity: 7,
-  automatic_thought: "Я не справляюсь. Меня уволят. Все видят, что я некомпетентен.",
-  body_sensations: "Напряжение в плечах, учащённое сердцебиение, потеют ладони",
-  behavior: "Молчал на совещании, избегал зрительного контакта, после ушёл в туалет и 10 минут сидел один",
-  evidence_supporting: "Начальник действительно был недоволен. Сроки действительно сорваны.",
-  evidence_against: "Часть задач зависла не по моей вине. До этого проекты я сдавал вовремя. Коллеги тоже опаздывают.",
-  alternative_thought: "Я допустил ошибки в планировании, но это не делает меня некомпетентным. Это учебный опыт.",
-  new_emotion_intensity: 4,
-  lessons_learned: "Нужно лучше коммуницировать о задержках заранее. Не брать ответственность за чужие задачи.",
-  mood: 3,
-  energy: 5,
-  stress: 7,
-  anxiety: 8,
-  tags: ["работа", "стресс"],
-  distortions: ["Катастрофизация", "Чтение мыслей"],
-}
+type EntryWithDistortions = JournalEntry & { distortions: string[] }
 
 export default function JournalDetailPage() {
   const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
+
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
-  const [entry, setEntry] = useState(mockEntry)
-  const [editData, setEditData] = useState(mockEntry)
+
+  const initialEntry = useMemo(() => {
+    return DEMO_ENTRIES.find((e) => e.id === id) || null
+  }, [id])
+
+  const [entry, setEntry] = useState<EntryWithDistortions | null>(initialEntry)
+  const [editData, setEditData] = useState<EntryWithDistortions | null>(initialEntry)
 
   const handleSave = () => {
-    setEntry(editData)
-    setIsEditing(false)
+    if (editData) {
+      setEntry(editData)
+      setIsEditing(false)
+    }
   }
 
   const handleDelete = () => {
@@ -52,6 +42,7 @@ export default function JournalDetailPage() {
   }
 
   const handleExport = useCallback(async () => {
+    if (!entry) return
     setIsExporting(true)
     try {
       const { generateEntryPDF, downloadBlob } = await import("@/lib/pdf/generator")
@@ -63,6 +54,22 @@ export default function JournalDetailPage() {
       setIsExporting(false)
     }
   }, [entry])
+
+  if (!entry) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Button variant="ghost" onClick={() => router.back()} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Назад
+        </Button>
+        <Card className="glass-card">
+          <CardContent className="flex items-center justify-center py-16">
+            <p className="text-muted-foreground">Запись не найдена</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const intensityChange = entry.emotion_intensity - entry.new_emotion_intensity
 
@@ -111,7 +118,7 @@ export default function JournalDetailPage() {
           })}
         </span>
         <span className="flex items-center gap-1">
-          {entry.emotion}
+          {EMOTION_ICONS[entry.emotion] || "😐"} {entry.emotion}
         </span>
       </div>
 
@@ -159,8 +166,8 @@ export default function JournalDetailPage() {
           <CardContent>
             {isEditing ? (
               <Textarea
-                value={editData.situation}
-                onChange={(e) => setEditData({ ...editData, situation: e.target.value })}
+                value={editData?.situation || ""}
+                onChange={(e) => setEditData(editData ? { ...editData, situation: e.target.value } : null)}
                 className="min-h-[100px]"
               />
             ) : (
@@ -177,8 +184,8 @@ export default function JournalDetailPage() {
           <CardContent>
               {isEditing ? (
                 <Textarea
-                  value={editData.automatic_thought}
-                  onChange={(e) => setEditData({ ...editData, automatic_thought: e.target.value })}
+                  value={editData?.automatic_thought || ""}
+                  onChange={(e) => setEditData(editData ? { ...editData, automatic_thought: e.target.value } : null)}
                   className="min-h-[80px]"
                 />
               ) : (
@@ -196,8 +203,8 @@ export default function JournalDetailPage() {
             <CardContent>
               {isEditing ? (
                 <Textarea
-                  value={editData.body_sensations}
-                  onChange={(e) => setEditData({ ...editData, body_sensations: e.target.value })}
+                  value={editData?.body_sensations || ""}
+                  onChange={(e) => setEditData(editData ? { ...editData, body_sensations: e.target.value } : null)}
                 />
               ) : (
                 <p className="text-sm text-foreground">{entry.body_sensations}</p>
@@ -212,8 +219,8 @@ export default function JournalDetailPage() {
             <CardContent>
               {isEditing ? (
                 <Textarea
-                  value={editData.behavior}
-                  onChange={(e) => setEditData({ ...editData, behavior: e.target.value })}
+                  value={editData?.behavior || ""}
+                  onChange={(e) => setEditData(editData ? { ...editData, behavior: e.target.value } : null)}
                 />
               ) : (
                 <p className="text-sm text-foreground">{entry.behavior}</p>
@@ -250,8 +257,8 @@ export default function JournalDetailPage() {
             <CardContent>
               {isEditing ? (
                 <Textarea
-                  value={editData.evidence_supporting}
-                  onChange={(e) => setEditData({ ...editData, evidence_supporting: e.target.value })}
+                  value={editData?.evidence_supporting || ""}
+                  onChange={(e) => setEditData(editData ? { ...editData, evidence_supporting: e.target.value } : null)}
                 />
               ) : (
                 <p className="text-sm text-foreground">{entry.evidence_supporting}</p>
@@ -266,8 +273,8 @@ export default function JournalDetailPage() {
             <CardContent>
               {isEditing ? (
                 <Textarea
-                  value={editData.evidence_against}
-                  onChange={(e) => setEditData({ ...editData, evidence_against: e.target.value })}
+                  value={editData?.evidence_against || ""}
+                  onChange={(e) => setEditData(editData ? { ...editData, evidence_against: e.target.value } : null)}
                 />
               ) : (
                 <p className="text-sm text-foreground">{entry.evidence_against}</p>
@@ -284,8 +291,8 @@ export default function JournalDetailPage() {
           <CardContent>
               {isEditing ? (
                 <Textarea
-                  value={editData.alternative_thought}
-                  onChange={(e) => setEditData({ ...editData, alternative_thought: e.target.value })}
+                  value={editData?.alternative_thought || ""}
+                  onChange={(e) => setEditData(editData ? { ...editData, alternative_thought: e.target.value } : null)}
                   className="min-h-[80px]"
                 />
               ) : (
@@ -302,8 +309,8 @@ export default function JournalDetailPage() {
           <CardContent>
               {isEditing ? (
                 <Textarea
-                  value={editData.lessons_learned}
-                  onChange={(e) => setEditData({ ...editData, lessons_learned: e.target.value })}
+                  value={editData?.lessons_learned || ""}
+                  onChange={(e) => setEditData(editData ? { ...editData, lessons_learned: e.target.value } : null)}
                 />
               ) : (
                 <p className="text-sm text-foreground">{entry.lessons_learned}</p>

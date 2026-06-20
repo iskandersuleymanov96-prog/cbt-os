@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import {
@@ -21,46 +21,15 @@ import { SuccessToast } from "@/components/ui/success-toast"
 import { InstallPrompt } from "@/components/ui/install-prompt"
 import { NotificationBanner } from "@/components/ui/notification-banner"
 import { isSupported, requestPermission } from "@/lib/notifications/service"
-
-const recentEntries = [
-  {
-    id: "1",
-    date: "Сегодня, 14:30",
-    emotion: "😟",
-    emotionLabel: "Тревога",
-    situation: "Совещание по проекту — начальник критиковал мою работу...",
-    mood: 3,
-    stress: 7,
-  },
-  {
-    id: "2",
-    date: "Вчера, 21:15",
-    emotion: "😌",
-    emotionLabel: "Спокойствие",
-    situation: "Вечерняя прогулка в парке. Почувствовал себя расслабленным...",
-    mood: 4,
-    stress: 2,
-  },
-  {
-    id: "3",
-    date: "2 дня назад",
-    emotion: "😊",
-    emotionLabel: "Радость",
-    situation: "Получил положительный отзыв от клиента по проекту...",
-    mood: 5,
-    stress: 1,
-  },
-]
-
-const weeklyData = [
-  { day: "Пн", mood: 3, stress: 6 },
-  { day: "Вт", mood: 4, stress: 4 },
-  { day: "Ср", mood: 3, stress: 7 },
-  { day: "Чт", mood: 4, stress: 3 },
-  { day: "Пт", mood: 5, stress: 2 },
-  { day: "Сб", mood: 4, stress: 3 },
-  { day: "Вс", mood: 4, stress: 2 },
-]
+import {
+  DEMO_ENTRIES,
+  EMOTION_ICONS,
+  DEMO_INSIGHTS,
+  calculateStreak,
+  getWeeklyData,
+  getTodayStats,
+  getWeekStats,
+} from "@/lib/demo-data"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -83,7 +52,50 @@ export default function DashboardPage() {
   const [selectedMood, setSelectedMood] = useState<number | undefined>(undefined)
   const [showToast, setShowToast] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(false)
-  const streak = 5
+  const [entries, setEntries] = useState(DEMO_ENTRIES)
+
+  const streak = useMemo(() => calculateStreak(entries), [entries])
+  const weeklyData = useMemo(() => getWeeklyData(entries), [entries])
+  const todayStats = useMemo(() => getTodayStats(entries), [entries])
+  const weekStats = useMemo(() => getWeekStats(entries), [entries])
+
+  const recentEntries = useMemo(() => {
+    return [...entries]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 3)
+      .map((e) => {
+        const diff = Date.now() - new Date(e.created_at).getTime()
+        const hours = Math.floor(diff / 3600000)
+        let dateLabel: string
+        if (hours < 1) dateLabel = "Только что"
+        else if (hours < 24) dateLabel = `Сегодня, ${new Date(e.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`
+        else if (hours < 48) dateLabel = `Вчера, ${new Date(e.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`
+        else dateLabel = `${Math.floor(hours / 24)} дн. назад`
+
+        return {
+          id: e.id,
+          date: dateLabel,
+          emotion: EMOTION_ICONS[e.emotion] || "😐",
+          emotionLabel: e.emotion,
+          situation: e.situation,
+          mood: e.mood,
+          stress: e.stress,
+        }
+      })
+  }, [entries])
+
+  const latestInsight = useMemo(() => {
+    return [...DEMO_INSIGHTS].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0]
+  }, [])
+
+  const totalDistortions = useMemo(() => {
+    return entries.reduce(
+      (s, e) => s + (e as typeof e & { distortions: string[] }).distortions.length,
+      0
+    )
+  }, [entries])
 
   useEffect(() => {
     if (isSupported()) {
@@ -97,6 +109,13 @@ export default function DashboardPage() {
     setNotifEnabled(perm === "granted")
   }
 
+  const handleMoodChange = (mood: number | undefined) => {
+    setSelectedMood(mood)
+    if (mood) {
+      setShowToast(true)
+    }
+  }
+
   return (
     <motion.div
       className="space-y-6"
@@ -106,14 +125,12 @@ export default function DashboardPage() {
     >
       <NotificationBanner />
 
-      {/* Install Prompt */}
       <InstallPrompt />
 
-      {/* Success Toast */}
       <SuccessToast
         show={showToast}
         type="streak"
-        title="5 дней подряд!"
+        title={`${streak} дней подряд!`}
         message="Отличная работа! Вы не прерываете свой streak"
         onClose={() => setShowToast(false)}
       />
@@ -141,7 +158,7 @@ export default function DashboardPage() {
             <p className="mb-3 text-sm font-medium text-muted-foreground">
               Как ваше настроение сейчас?
             </p>
-            <MoodPicker value={selectedMood} onChange={setSelectedMood} />
+            <MoodPicker value={selectedMood} onChange={handleMoodChange} />
           </CardContent>
         </Card>
       </motion.div>
@@ -150,10 +167,10 @@ export default function DashboardPage() {
       <motion.div variants={itemVariants}>
         <div className="grid gap-4 md:grid-cols-2">
           <TodaySummary
-            entriesCount={2}
-            avgMood={3.5}
-            distortionsCount={1}
-            lastActive="2ч назад"
+            entriesCount={todayStats.entriesCount}
+            avgMood={todayStats.avgMood}
+            distortionsCount={todayStats.distortionsCount}
+            lastActive={todayStats.lastActive}
           />
           <motion.div
             className="rounded-2xl border border-white/40 bg-gradient-to-br from-orange-500/[0.06] to-amber-500/[0.03] p-5 backdrop-blur-xl"
@@ -198,7 +215,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <p className="mt-3 text-[10px] text-muted-foreground">
-              До следующей цели: {30 - streak} дней
+              До следующей цели: {Math.max(0, 30 - streak)} дней
             </p>
           </motion.div>
         </div>
@@ -211,23 +228,23 @@ export default function DashboardPage() {
       >
         <StatCard
           label="Записей за неделю"
-          value="12"
-          change="+3 к прошлой неделе"
-          changeType="positive"
+          value={String(weekStats.entriesThisWeek)}
+          change={`${weekStats.entriesThisWeek - weekStats.entriesLastWeek > 0 ? "+" : ""}${weekStats.entriesThisWeek - weekStats.entriesLastWeek} к прошлой неделе`}
+          changeType={weekStats.entriesThisWeek >= weekStats.entriesLastWeek ? "positive" : "negative"}
           icon={<BookOpen className="h-5 w-5" />}
           gradient="from-blue-500/8 to-indigo-500/3"
         />
         <StatCard
           label="Среднее настроение"
-          value="3.9"
-          change="+0.3 к прошлой неделе"
-          changeType="positive"
+          value={String(weekStats.avgMoodThisWeek)}
+          change={`${weekStats.avgMoodThisWeek - weekStats.avgMoodLastWeek >= 0 ? "+" : ""}${(weekStats.avgMoodThisWeek - weekStats.avgMoodLastWeek).toFixed(1)} к прошлой неделе`}
+          changeType={weekStats.avgMoodThisWeek >= weekStats.avgMoodLastWeek ? "positive" : "negative"}
           icon={<TrendingUp className="h-5 w-5" />}
           gradient="from-emerald-500/8 to-teal-500/3"
         />
         <StatCard
           label="Искажений оспорено"
-          value="12"
+          value={String(totalDistortions)}
           change="За всё время"
           icon={<Brain className="h-5 w-5" />}
           gradient="from-violet-500/8 to-purple-500/3"
@@ -294,23 +311,31 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-sm font-semibold">AI-инсайт</p>
                 </div>
-                <Badge variant="secondary" className="text-[10px]">Новый</Badge>
+                <Badge variant="secondary" className="text-[10px]">
+                  {latestInsight?.is_read ? "Прочитано" : "Новый"}
+                </Badge>
               </div>
               <p className="mb-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                Вы чаще испытываете тревогу перед совещаниями. Попробуйте технику заземления за 10 минут до начала.
+                {latestInsight?.content || "Пока нет инсайтов"}
               </p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2">
                   <span className="text-xs">💡</span>
-                  <p className="text-[11px] text-muted-foreground">Паттерн: тревога по средам</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {weekStats.topDistortion ? `Паттерн: ${weekStats.topDistortion.toLowerCase()}` : "Пока нет паттернов"}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2">
                   <span className="text-xs">📈</span>
-                  <p className="text-[11px] text-muted-foreground">Настроение растёт +18%</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {weekStats.avgMoodThisWeek > weekStats.avgMoodLastWeek
+                      ? `Настроение растёт +${Math.round(((weekStats.avgMoodThisWeek - weekStats.avgMoodLastWeek) / Math.max(weekStats.avgMoodLastWeek, 0.1)) * 100)}%`
+                      : "Продолжайте вести дневник для анализа"}
+                  </p>
                 </div>
               </div>
               <Link
-                href="/ai"
+                href="/ai/insights"
                 className="mt-3 group flex items-center gap-1 text-sm font-medium text-primary transition-smooth hover:gap-2"
               >
                 Все инсайты
@@ -325,11 +350,11 @@ export default function DashboardPage() {
       <motion.div variants={itemVariants}>
         <div className="grid gap-4 md:grid-cols-2">
           <WeeklySummary
-            entriesThisWeek={12}
-            entriesLastWeek={9}
-            avgMoodThisWeek={3.9}
-            avgMoodLastWeek={3.6}
-            topDistortion="Катастрофизация"
+            entriesThisWeek={weekStats.entriesThisWeek}
+            entriesLastWeek={weekStats.entriesLastWeek}
+            avgMoodThisWeek={weekStats.avgMoodThisWeek}
+            avgMoodLastWeek={weekStats.avgMoodLastWeek}
+            topDistortion={weekStats.topDistortion}
           />
           <motion.div
             className="rounded-2xl border border-white/40 bg-white/60 p-5 backdrop-blur-xl"
@@ -339,36 +364,18 @@ export default function DashboardPage() {
           >
             <h3 className="mb-3 text-sm font-semibold text-deep-charcoal">Последняя активность</h3>
             <div className="space-y-3">
-              <div className="flex items-center gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                  <BookOpen className="h-4 w-4 text-blue-500" />
+              {recentEntries.slice(0, 3).map((entry, i) => (
+                <div key={entry.id} className="flex items-center gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                    <BookOpen className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-deep-charcoal">{entry.emotionLabel}</p>
+                    <p className="text-[10px] text-muted-foreground">{entry.date}</p>
+                  </div>
+                  <Clock className="h-3 w-3 text-muted-foreground" />
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-deep-charcoal">Новая запись</p>
-                  <p className="text-[10px] text-muted-foreground">Сегодня, 14:30</p>
-                </div>
-                <Clock className="h-3 w-3 text-muted-foreground" />
-              </div>
-              <div className="flex items-center gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
-                  <Sparkles className="h-4 w-4 text-violet-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-deep-charcoal">AI-инсайт получен</p>
-                  <p className="text-[10px] text-muted-foreground">Сегодня, 15:00</p>
-                </div>
-                <Clock className="h-3 w-3 text-muted-foreground" />
-              </div>
-              <div className="flex items-center gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                  <span className="text-sm">🧘</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-deep-charcoal">Упражнение завершено</p>
-                  <p className="text-[10px] text-muted-foreground">Вчера, 22:00</p>
-                </div>
-                <Clock className="h-3 w-3 text-muted-foreground" />
-              </div>
+              ))}
             </div>
           </motion.div>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   Sparkles, Eye, EyeOff, Archive, Trash2,
@@ -16,74 +16,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-const mockInsights = [
-  {
-    id: "i1",
-    type: "pattern",
-    title: "Тревога по средам",
-    content: "В последние 3 недели вы испытываете повышенную тревожность каждую среду, что совпадает с дневными совещаниями. Пик интенсивности — 8/10. Рекомендую подготовить план действий перед каждой средой.",
-    confidence: 92,
-    created_at: "2026-06-19T10:00:00",
-    is_read: false,
-    entry_id: "1",
-  },
-  {
-    id: "i2",
-    type: "suggestion",
-    title: "Техника «Останови и замени»",
-    content: "Когда замечаете катастрофическую мысль, остановитесь на 5 секунд, глубоко вдохните и задайте вопрос: «Что бы я сказал другу в этой ситуации?» Это помогает дистанцироваться от эмоций.",
-    confidence: 88,
-    created_at: "2026-06-18T14:30:00",
-    is_read: false,
-  },
-  {
-    id: "i3",
-    type: "reflection",
-    title: "Обесценивание позитива",
-    content: "В записи от 17 июня вы получили положительный отзыв от клиента, но описали его как «просто вежливость». Обратите внимание на эту тенденцию — хорошие вещи заслуживают признания.",
-    confidence: 85,
-    created_at: "2026-06-17T20:00:00",
-    is_read: true,
-    entry_id: "3",
-  },
-  {
-    id: "i4",
-    type: "growth",
-    title: "Прогресс в осознанности",
-    content: "За последние 2 недели вы в 3 раза чаще записывали альтернативные мысли. Это серьёзный прогресс в когнитивном реструктурировании. Ваша способность видеть несколько сторон ситуации растёт!",
-    confidence: 95,
-    created_at: "2026-06-16T18:00:00",
-    is_read: true,
-  },
-  {
-    id: "i5",
-    type: "pattern",
-    title: "Чтение мыслей в рабочих ситуациях",
-    content: "Вы часто предполагаете негативное отношение коллег: «Он точно думает, что я некомпетентен». В 80% случаев последующие записи показывают, что реальность была мягче.",
-    confidence: 78,
-    created_at: "2026-06-15T11:00:00",
-    is_read: true,
-  },
-  {
-    id: "i6",
-    type: "suggestion",
-    title: "Вечерняя рефлексия",
-    content: "Попробуйте добавить короткую вечернюю запись (2-3 минуты): «Что прошло хорошо сегодня? За что я благодарен?» Это смещает фокус с негатива и улучшает сон.",
-    confidence: 90,
-    created_at: "2026-06-14T21:00:00",
-    is_read: false,
-  },
-  {
-    id: "i7",
-    type: "reflection",
-    title: "Эмоциональное восстановление",
-    content: "В среднем ваша интенсивность негативных эмоций снижается на 40% после рефлексии. Это хороший показатель — ваш мозг учится регулировать реакции через осознанность.",
-    confidence: 87,
-    created_at: "2026-06-13T16:00:00",
-    is_read: true,
-  },
-]
+import { DEMO_INSIGHTS } from "@/lib/demo-data"
+import type { AIInsight } from "@/types"
 
 const typeConfig: Record<string, { label: string; icon: typeof Sparkles; color: string; bgColor: string }> = {
   pattern: { label: "Паттерн", icon: TrendingUp, color: "text-blue-600", bgColor: "bg-blue-50" },
@@ -93,26 +27,31 @@ const typeConfig: Record<string, { label: string; icon: typeof Sparkles; color: 
 }
 
 export default function AIInsightsPage() {
-  const [insights, setInsights] = useState(mockInsights)
+  const [insights, setInsights] = useState<AIInsight[]>(DEMO_INSIGHTS)
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedInsight, setSelectedInsight] = useState<typeof mockInsights[0] | null>(null)
+  const [selectedInsight, setSelectedInsight] = useState<AIInsight | null>(null)
   const [showArchiveDialog, setShowArchiveDialog] = useState<string | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null)
 
-  const filteredInsights = insights
-    .filter((i) => {
-      if (activeTab === "unread") return !i.is_read
-      if (activeTab !== "all" && activeTab !== "unread") return i.type === activeTab
-      return true
-    })
-    .filter((i) => {
-      if (!searchQuery.trim()) return true
-      const q = searchQuery.toLowerCase()
-      return i.title.toLowerCase().includes(q) || i.content.toLowerCase().includes(q)
-    })
+  const filteredInsights = useMemo(() => {
+    return insights
+      .filter((i) => {
+        if (activeTab === "unread") return !i.is_read
+        if (activeTab !== "all" && activeTab !== "unread") return i.type === activeTab
+        return true
+      })
+      .filter((i) => {
+        if (!searchQuery.trim()) return true
+        const q = searchQuery.toLowerCase()
+        return (
+          (i.title?.toLowerCase().includes(q) ?? false) ||
+          i.content.toLowerCase().includes(q)
+        )
+      })
+  }, [insights, activeTab, searchQuery])
 
-  const unreadCount = insights.filter((i) => !i.is_read).length
+  const unreadCount = useMemo(() => insights.filter((i) => !i.is_read).length, [insights])
 
   const markAsRead = (id: string) => {
     setInsights((prev) => prev.map((i) => (i.id === id ? { ...i, is_read: true } : i)))

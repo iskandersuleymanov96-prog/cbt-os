@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, ArrowRight, Check, Sparkles, Mic } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -47,7 +47,7 @@ const emotions = [
 const distortions = [
   { name: "Катастрофизация", icon: "🌪️", description: "Преувеличение негативных последствий" },
   { name: "Чтение мыслей", icon: "🔮", description: "Убеждённость в том, что другие думают о вас" },
-  { name: "Чёрно-белое мышление", icon: "⬛", description: "Видение только двух极端" },
+  { name: "Чёрно-белое мышление", icon: "⬛", description: "Видение только двух крайних" },
   { name: "Обобщение", icon: "🔄", description: "Один случай = всегда" },
   { name: "Эмоциональное рассуждение", icon: "💭", description: "Чувства = факты" },
   { name: "Персонализация", icon: "🎯", description: "Брать вину на себя" },
@@ -80,6 +80,7 @@ function NewJournalEntryInner() {
   const [currentStep, setCurrentStep] = useState(0)
   const [direction, setDirection] = useState(1)
   const [showSaved, setShowSaved] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(false)
   const [form, setForm] = useState({
     situation: searchParams.get("situation") || "",
     date: new Date().toISOString().slice(0, 16),
@@ -96,6 +97,30 @@ function NewJournalEntryInner() {
     newIntensity: 5,
     lessonsLearned: "",
   })
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cbt-os-journal-draft")
+      if (saved) {
+        const draft = JSON.parse(saved)
+        setForm(draft.form)
+        setCurrentStep(draft.step)
+        setDraftRestored(true)
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!draftRestored) return
+    const timer = setTimeout(() => setDraftRestored(false), 3000)
+    return () => clearTimeout(timer)
+  }, [draftRestored])
+
+  useEffect(() => {
+    localStorage.setItem("cbt-os-journal-draft", JSON.stringify({ form, step: currentStep }))
+  }, [form, currentStep])
 
   const updateForm = (field: string, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -144,6 +169,7 @@ function NewJournalEntryInner() {
   }
 
   const handleSave = () => {
+    localStorage.removeItem("cbt-os-journal-draft")
     setShowSaved(true)
     setTimeout(() => {
       router.push("/journal")
@@ -161,6 +187,13 @@ function NewJournalEntryInner() {
         title="Запись сохранена!"
         message="Отличная работа над осознанностью"
         onClose={() => setShowSaved(false)}
+      />
+      <SuccessToast
+        show={draftRestored}
+        type="info"
+        title="Черновик восстановлен"
+        message="Продолжайте с того места, где остановились"
+        onClose={() => setDraftRestored(false)}
       />
 
       {/* Header */}
