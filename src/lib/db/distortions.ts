@@ -10,7 +10,7 @@ function isDemo() {
 const demoDistortions: Distortion[] = [
   { id: "1", name: "Катастрофизация", slug: "catastrophizing", description: "Преувеличение негативных последствий", examples: ["Если я опоздаю, меня уволят"], how_to_challenge: "Спросите: «Что самое худшее может произойти?»", icon: "🌪️" },
   { id: "2", name: "Чтение мыслей", slug: "mind-reading", description: "Убеждённость в том, что другие думают негативно", examples: ["Он точно думает, что я некомпетентен"], how_to_challenge: "Проверьте факты, спросите человека", icon: "🔮" },
-  { id: "3", name: "Чёрно-белое мышление", slug: "black-and-white", description: "Видение только двух极端", examples: ["Если не идеально — провал"], how_to_challenge: "Найдите третий вариант", icon: "⬛" },
+  { id: "3", name: "Чёрно-белое мышление", slug: "black-and-white", description: "Видение только двух крайних", examples: ["Если не идеально — провал"], how_to_challenge: "Найдите третий вариант", icon: "⬛" },
   { id: "4", name: "Обобщение", slug: "overgeneralization", description: "Один случай = всегда", examples: ["Я всегда всё порчу"], how_to_challenge: "Замените «всегда» на «иногда»", icon: "🔄" },
   { id: "5", name: "Эмоциональное рассуждение", slug: "emotional-reasoning", description: "Чувства = факты", examples: ["Мне страшно — значит опасность реальна"], how_to_challenge: "Чувства — это не факты", icon: "💭" },
   { id: "6", name: "Персонализация", slug: "personalization", description: "Брать вину на себя", examples: ["Коллега расстроен — это из-за меня"], how_to_challenge: "Какие ещё факторы повлияли?", icon: "🎯" },

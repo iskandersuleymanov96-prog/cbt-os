@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 import type { AppSettings } from "@/types"
 
 const defaultSettings: AppSettings = {
@@ -25,19 +26,26 @@ interface SettingsState {
   setLanguage: (lang: AppSettings["language"]) => void
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
-  settings: defaultSettings,
-  updateSettings: (data) =>
-    set((state) => ({
-      settings: { ...state.settings, ...data },
-    })),
-  resetSettings: () => set({ settings: defaultSettings }),
-  setTheme: (theme) =>
-    set((state) => ({
-      settings: { ...state.settings, theme },
-    })),
-  setLanguage: (language) =>
-    set((state) => ({
-      settings: { ...state.settings, language },
-    })),
-}))
+export const useSettingsStore = create<SettingsState>()(
+  persist(
+    (set) => ({
+      settings: defaultSettings,
+      updateSettings: (data) =>
+        set((state) => ({
+          settings: { ...state.settings, ...data },
+        })),
+      resetSettings: () => set({ settings: defaultSettings }),
+      setTheme: (theme) =>
+        set((state) => ({
+          settings: { ...state.settings, theme },
+        })),
+      setLanguage: (language) =>
+        set((state) => ({
+          settings: { ...state.settings, language },
+        })),
+    }),
+    {
+      name: "cbt-os-settings",
+    }
+  )
+)

@@ -41,6 +41,7 @@ export interface JournalEntry {
   anxiety: number
   tags: string[]
   is_draft?: boolean
+  is_deleted?: boolean
 }
 
 export interface JournalDraft {

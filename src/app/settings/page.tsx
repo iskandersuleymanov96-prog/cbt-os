@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   User, Palette, Bell, Sparkles, Shield, CreditCard,
   ChevronRight, Clock, Download,
   Upload, Database, Lock, Smartphone, Key, AlertTriangle,
   Camera, FileText, CheckCircle2, Loader2, HardDrive,
-  RefreshCw, Eye, EyeOff, Volume2, VolumeX
+  RefreshCw, Eye, EyeOff
 } from "lucide-react"
 import { isSupported, requestPermission } from "@/lib/notifications/service"
 import { scheduleReminder, scheduleWeeklySummary, cancelAll } from "@/lib/notifications/scheduler"
@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useTheme } from "@/components/theme-provider"
+import { useSettingsStore } from "@/stores/settings"
+import { SuccessToast } from "@/components/ui/success-toast"
 
 const aiTopicOptions = [
   "Тревога", "Депрессия", "Стресс", "Отношения", "Работа",
@@ -31,7 +33,9 @@ const aiTopicOptions = [
 ]
 
 export default function SettingsPage() {
+  const { settings, updateSettings } = useSettingsStore()
   const [activeTab, setActiveTab] = useState("profile")
+  const [showSaved, setShowSaved] = useState(false)
 
   // Profile
   const [profileName, setProfileName] = useState("Пользователь")
@@ -41,23 +45,23 @@ export default function SettingsPage() {
 
   // Preferences
   const { theme } = useTheme()
-  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">("medium")
-  const [compactMode, setCompactMode] = useState(false)
+  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(settings.font_size)
+  const [compactMode, setCompactMode] = useState(settings.compact_mode)
 
   // Notifications
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [reminderTime, setReminderTime] = useState("09:00")
-  const [emailNotifications, setEmailNotifications] = useState(false)
-  const [weeklySummary, setWeeklySummary] = useState(true)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(settings.notifications_enabled)
+  const [reminderTime, setReminderTime] = useState(settings.reminder_time)
+  const [emailNotifications, setEmailNotifications] = useState(settings.email_notifications)
+  const [weeklySummary, setWeeklySummary] = useState(settings.weekly_summary)
 
   // AI
-  const [aiIntensity, setAiIntensity] = useState<"gentle" | "moderate" | "intensive">("moderate")
-  const [aiStyle, setAiStyle] = useState<"concise" | "detailed" | "socratic">("detailed")
-  const [aiTopics, setAiTopics] = useState<string[]>(["Тревога", "Стресс"])
+  const [aiIntensity, setAiIntensity] = useState<"gentle" | "moderate" | "intensive">(settings.ai_coaching_intensity)
+  const [aiStyle, setAiStyle] = useState<"concise" | "detailed" | "socratic">(settings.ai_response_style)
+  const [aiTopics, setAiTopics] = useState<string[]>(settings.ai_focus_topics)
 
   // Privacy
-  const [dataRetention, setDataRetention] = useState(365)
-  const [encryption, setEncryption] = useState(true)
+  const [dataRetention, setDataRetention] = useState(settings.data_retention_days)
+  const [encryption, setEncryption] = useState(settings.encryption_enabled)
 
   // Password
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
@@ -74,6 +78,23 @@ export default function SettingsPage() {
       prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
     )
   }
+
+  const saveSettings = useCallback(() => {
+    updateSettings({
+      font_size: fontSize,
+      compact_mode: compactMode,
+      notifications_enabled: notificationsEnabled,
+      reminder_time: reminderTime,
+      email_notifications: emailNotifications,
+      weekly_summary: weeklySummary,
+      ai_coaching_intensity: aiIntensity,
+      ai_response_style: aiStyle,
+      ai_focus_topics: aiTopics,
+      data_retention_days: dataRetention,
+      encryption_enabled: encryption,
+    })
+    setShowSaved(true)
+  }, [fontSize, compactMode, notificationsEnabled, reminderTime, emailNotifications, weeklySummary, aiIntensity, aiStyle, aiTopics, dataRetention, encryption, updateSettings])
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -116,6 +137,13 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      <SuccessToast
+        show={showSaved}
+        type="saved"
+        title="Настройки сохранены"
+        message="Ваши изменения применены"
+        onClose={() => setShowSaved(false)}
+      />
       <div>
         <h1 className="text-2xl font-bold text-deep-charcoal">Настройки</h1>
         <p className="text-muted-foreground">Управление аккаунтом и приложением</p>
@@ -219,7 +247,7 @@ export default function SettingsPage() {
                   </select>
                 </div>
               </div>
-              <Button>Сохранить профиль</Button>
+              <Button onClick={saveSettings}>Сохранить профиль</Button>
             </CardContent>
           </Card>
         </TabsContent>
