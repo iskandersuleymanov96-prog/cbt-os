@@ -42,12 +42,16 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const pathname = request.nextUrl.pathname
+
   const publicPaths = ["/", "/onboarding", "/auth"]
   const isPublicPath = publicPaths.some(
-    (path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith("/auth/")
-  ) || request.nextUrl.pathname.startsWith("/api/")
+    (path) => pathname === path || pathname.startsWith("/auth/")
+  )
 
-  if (!user && !isPublicPath) {
+  const isDemoApi = pathname.startsWith("/api/ai/")
+
+  if (!user && !isPublicPath && !isDemoApi) {
     const url = request.nextUrl.clone()
     url.pathname = "/"
     return NextResponse.redirect(url)
