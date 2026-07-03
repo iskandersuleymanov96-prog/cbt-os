@@ -198,7 +198,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   },
   removeDraft: (entryId) =>
     set((state) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       const { [entryId]: _, ...rest } = state.drafts
       return { drafts: rest }
     }),

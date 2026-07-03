@@ -1,4 +1,4 @@
-import type { JournalEntry, Pattern, AIInsight } from "@/types"
+import type { JournalEntry } from "@/types"
 
 export const EMOTION_ICONS: Record<string, string> = {
   "Тревога": "😟",

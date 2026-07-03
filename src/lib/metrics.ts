@@ -95,8 +95,8 @@ class PerformanceMonitor {
     this.metrics.push(metric)
 
     // Send to Vercel Analytics if available
-    if (typeof window !== "undefined" && (window as unknown as { gtag?: Function }).gtag) {
-      (window as unknown as { gtag: Function }).gtag("event", "web_vitals", {
+    if (typeof window !== "undefined" && (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag) {
+      (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "web_vitals", {
         event_category: "Web Vitals",
         event_label: name,
         value: Math.round(name === "CLS" ? value * 1000 : value),
@@ -110,8 +110,8 @@ class PerformanceMonitor {
     this.events.push(event)
 
     // Send to Vercel Analytics
-    if (typeof window !== "undefined" && (window as unknown as { gtag?: Function }).gtag) {
-      (window as unknown as { gtag: Function }).gtag("event", name, properties)
+    if (typeof window !== "undefined" && (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag) {
+      (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", name, properties)
     }
   }
 
