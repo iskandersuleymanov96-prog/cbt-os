@@ -54,13 +54,13 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-white/30 bg-white/80 backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:translate-x-0 lg:static lg:z-auto",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border/30 glass-strong transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:translate-x-0 lg:static lg:z-auto",
           sidebarOpen ? "translate-x-0 shadow-floating" : "-translate-x-full"
         )}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 items-center justify-between border-b border-white/30 px-6">
+          <div className="flex h-16 items-center justify-between border-b border-border/30 px-6">
             <Link href="/dashboard" className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-cta shadow-sm">
                 <Brain className="h-5 w-5 text-white" />
@@ -112,7 +112,7 @@ export default function DashboardLayout({
           </nav>
 
           {/* User section */}
-          <div className="border-t border-white/30 p-4">
+          <div className="border-t border-border/30 p-4">
             <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-secondary/80 to-secondary/40 px-3 py-3 transition-smooth hover:from-secondary hover:to-secondary/60">
               <div className="flex items-center gap-3">
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-sm font-semibold text-primary">
@@ -132,7 +132,7 @@ export default function DashboardLayout({
       {/* Main content */}
       <main className="flex-1 min-w-0">
         {/* Mobile header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-white/30 bg-white/70 backdrop-blur-xl px-4 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/30 glass-strong px-4 lg:hidden">
             <button
               onClick={() => setSidebarOpen(true)}
               className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary"

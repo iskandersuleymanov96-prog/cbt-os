@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { GradientButton } from "@/components/ui/gradient-button"
 import { SuccessToast } from "@/components/ui/success-toast"
+import { useJournalStore } from "@/stores/journal"
 
 const steps = [
   { title: "Ситуация", description: "Что произошло?" },
@@ -77,6 +78,7 @@ const pageVariants = {
 function NewJournalEntryInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const addEntry = useJournalStore((s) => s.addEntry)
   const [currentStep, setCurrentStep] = useState(0)
   const [direction, setDirection] = useState(1)
   const [showSaved, setShowSaved] = useState(false)
@@ -169,6 +171,28 @@ function NewJournalEntryInner() {
   }
 
   const handleSave = () => {
+    const entry = {
+      id: crypto.randomUUID(),
+      user_id: "demo",
+      created_at: new Date().toISOString(),
+      situation: form.situation,
+      emotion: form.emotions[0] || "Нейтрально",
+      emotion_intensity: form.intensity,
+      automatic_thought: form.automaticThought,
+      body_sensations: form.bodySensations,
+      behavior: form.behavior,
+      evidence_supporting: form.evidenceFor,
+      evidence_against: form.evidenceAgainst,
+      alternative_thought: form.alternativeThought,
+      new_emotion_intensity: form.newIntensity,
+      lessons_learned: form.lessonsLearned,
+      mood: Math.round(form.newIntensity / 2),
+      energy: 5,
+      stress: form.intensity,
+      anxiety: form.intensity,
+      tags: form.tags,
+    }
+    addEntry(entry)
     localStorage.removeItem("cbt-os-journal-draft")
     setShowSaved(true)
     setTimeout(() => {

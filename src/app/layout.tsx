@@ -1,9 +1,16 @@
 import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
+
+const inter = Inter({
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  variable: "--font-inter",
+})
 
 export const metadata: Metadata = {
   title: "CBT OS — Осознанность",
@@ -38,7 +45,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="min-h-screen antialiased">
+      <body className={`min-h-screen antialiased ${inter.variable}`} style={{ fontFamily: "var(--font-inter), system-ui, -apple-system, sans-serif" }}>
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>

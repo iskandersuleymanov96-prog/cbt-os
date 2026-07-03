@@ -135,6 +135,45 @@ export default function SettingsPage() {
     }
   }
 
+  const handleImport = () => {
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = ".json,.csv"
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      try {
+        const text = await file.text()
+        if (file.name.endsWith(".json")) {
+          const data = JSON.parse(text)
+          console.log("Imported data:", data)
+          setShowSaved(true)
+        } else {
+          console.log("CSV import:", text.slice(0, 200))
+          setShowSaved(true)
+        }
+      } catch (err) {
+        console.error("Import failed:", err)
+      }
+    }
+    input.click()
+  }
+
+  const handleBackup = () => {
+    const data = {
+      timestamp: new Date().toISOString(),
+      settings: JSON.parse(JSON.stringify(settings)),
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `cbt-os-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setShowSaved(true)
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <SuccessToast
@@ -539,7 +578,7 @@ export default function SettingsPage() {
               <CardTitle className="text-lg">Импорт данных</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full gap-2">
+              <Button variant="outline" className="w-full gap-2" onClick={handleImport}>
                 <Upload className="h-4 w-4" /> Импорт из файла
               </Button>
               <p className="text-xs text-muted-foreground mt-2 text-center">
@@ -563,7 +602,7 @@ export default function SettingsPage() {
                 </div>
                 <Badge variant="outline" className="bg-green-50 text-green-700">Активен</Badge>
               </div>
-              <Button variant="outline" className="w-full gap-2">
+              <Button variant="outline" className="w-full gap-2" onClick={handleBackup}>
                 <RefreshCw className="h-4 w-4" /> Создать бэкап сейчас
               </Button>
             </CardContent>

@@ -10,19 +10,31 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { GradientButton } from "@/components/ui/gradient-button"
 import { SkeletonCard } from "@/components/ui/skeleton"
 import { DEMO_ENTRIES, EMOTION_ICONS } from "@/lib/demo-data"
+import { useJournalStore } from "@/stores/journal"
 
 export default function JournalPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading] = useState(false)
+  const storeEntries = useJournalStore((s) => s.entries)
+
+  const allEntries = useMemo(() => {
+    const merged = [...storeEntries, ...DEMO_ENTRIES]
+    const seen = new Set()
+    return merged.filter((e) => {
+      if (seen.has(e.id)) return false
+      seen.add(e.id)
+      return true
+    })
+  }, [storeEntries])
 
   const filteredEntries = useMemo(() => {
-    return DEMO_ENTRIES.filter(
+    return allEntries.filter(
       (entry) =>
         entry.situation.toLowerCase().includes(searchQuery.toLowerCase()) ||
         entry.emotion.toLowerCase().includes(searchQuery.toLowerCase()) ||
         entry.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
     )
-  }, [searchQuery])
+  }, [searchQuery, allEntries])
 
   return (
     <div className="space-y-6">
@@ -30,7 +42,7 @@ export default function JournalPage() {
         <div>
           <h1 className="text-2xl font-bold text-deep-charcoal">Дневник</h1>
           <p className="text-muted-foreground">
-            {DEMO_ENTRIES.length} записей
+            {allEntries.length} записей
           </p>
         </div>
         <Link href="/journal/new">
@@ -93,9 +105,9 @@ export default function JournalPage() {
                         <span>😐 {entry.mood}/5</span>
                         <span>😰 {entry.stress}/10</span>
                       </div>
-                      {entry.distortions.length > 0 && (
+                      {"distortions" in entry && (entry as unknown as Record<string, string[]>).distortions?.length > 0 && (
                         <div className="flex gap-1 mt-2">
-                          {entry.distortions.map((d) => (
+                          {(entry as unknown as Record<string, string[]>).distortions.map((d: string) => (
                             <Badge key={d} variant="secondary" className="text-[10px]">
                               {d}
                             </Badge>
