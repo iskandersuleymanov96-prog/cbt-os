@@ -125,6 +125,7 @@ function AuthPageInner() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -141,6 +142,7 @@ function AuthPageInner() {
                   className="pl-10"
                   required
                   minLength={6}
+                  autoComplete="current-password"
                 />
               </div>
             </div>

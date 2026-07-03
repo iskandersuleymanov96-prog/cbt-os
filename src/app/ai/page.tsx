@@ -183,7 +183,7 @@ export default function AIPage() {
       </motion.div>
 
       {/* Quick Prompts */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
+      <div className="flex flex-nowrap gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
         {quickPrompts.map((prompt, i) => (
           <Button
             key={i}
