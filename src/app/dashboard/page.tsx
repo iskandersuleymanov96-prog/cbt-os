@@ -21,6 +21,7 @@ import { SuccessToast } from "@/components/ui/success-toast"
 import { InstallPrompt } from "@/components/ui/install-prompt"
 import { NotificationBanner } from "@/components/ui/notification-banner"
 import { isSupported, requestPermission } from "@/lib/notifications/service"
+import { useFormattedDate } from "@/hooks/use-client-date"
 import {
   DEMO_ENTRIES,
   EMOTION_ICONS,
@@ -53,6 +54,12 @@ export default function DashboardPage() {
   const [showToast, setShowToast] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(false)
   const [entries] = useState(DEMO_ENTRIES)
+  const [mounted, setMounted] = useState(false)
+  const todayStr = useFormattedDate({ weekday: "long", day: "numeric", month: "long" })
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const streak = useMemo(() => calculateStreak(entries), [entries])
   const weeklyData = useMemo(() => getWeeklyData(entries), [entries])
@@ -60,6 +67,7 @@ export default function DashboardPage() {
   const weekStats = useMemo(() => getWeekStats(entries), [entries])
 
   const recentEntries = useMemo(() => {
+    if (!mounted) return []
     return [...entries]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 3)
@@ -82,7 +90,7 @@ export default function DashboardPage() {
           stress: e.stress,
         }
       })
-  }, [entries])
+  }, [entries, mounted])
 
   const latestInsight = useMemo(() => {
     return [...DEMO_INSIGHTS].sort(
@@ -139,7 +147,7 @@ export default function DashboardPage() {
       <motion.div variants={itemVariants}>
         <PageHeader
           title={`Привет! 👋`}
-          description={`Сегодня, ${new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}`}
+          description={todayStr ? `Сегодня, ${todayStr}` : "Загрузка..."}
           action={
             <Link href="/journal/new">
               <GradientButton size="md" className="gap-2 shadow-lg shadow-primary/20">
