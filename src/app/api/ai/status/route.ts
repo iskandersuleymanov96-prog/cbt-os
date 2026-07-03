@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  const hasOpenRouter = !!process.env.OPENROUTER_API_KEY
-  const hasOpenAI = !!process.env.OPENAI_API_KEY
+  const apiKey = process.env.OPENROUTER_API_KEY
+  const configured = !!apiKey
 
   return NextResponse.json({
-    configured: hasOpenRouter || hasOpenAI,
-    provider: hasOpenRouter ? "openrouter" : hasOpenAI ? "openai" : "none",
-    model: hasOpenRouter ? "deepseek/deepseek-chat" : "gpt-4o-mini",
+    configured,
+    provider: configured ? "openrouter" : "none",
+    model: configured ? "deepseek/deepseek-chat-v3-0324:free" : null,
   })
 }

@@ -9,14 +9,14 @@ import { Textarea } from "@/components/ui/textarea"
 interface APIStatus {
   configured: boolean
   provider: string
-  model: string
+  model: string | null
 }
 
 const quickPrompts = [
-  "Проанализируй моё настроение за неделю",
-  "Какие когнитивные искажения я чаще всего использую?",
-  "Помоги мне найти альтернативную мысль",
-  "Какие паттерны ты видишь в моих записях?",
+  "Помоги мне переосмыслить негативную мысль",
+  "Какие когнитивные искажения я использую?",
+  "Помоги найти альтернативную мысль",
+  "Объясни технику ABC для рефлексии",
 ]
 
 interface Message {
@@ -31,7 +31,7 @@ const initialMessages: Message[] = [
   {
     id: "1",
     role: "assistant",
-    content: "Привет! Я ваш AI-ассистент для рефлексии. Я проанализировал ваши записи и готов помочь вам лучше понять свои мысли и паттерны. Что вас интересует?",
+    content: "Привет! Я ваш CBT-ассистент. Я помогу вам переосмысливать мысли, выявлять когнитивные искажения и находить альтернативы. Чем я могу помочь?",
     timestamp: new Date().toISOString(),
   },
 ]
@@ -48,7 +48,7 @@ export default function AIPage() {
     fetch("/api/ai/status")
       .then((res) => res.json())
       .then(setApiStatus)
-      .catch(() => setApiStatus({ configured: false, provider: "none", model: "demo" }))
+      .catch(() => setApiStatus({ configured: false, provider: "none", model: null }))
   }, [])
 
   const scrollToBottom = () => {
@@ -98,7 +98,26 @@ export default function AIPage() {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        const errorText = await response.text().catch(() => "")
+        const errorType = response.headers.get("X-Error-Type")
+
+        let errorMsg: string
+        if (errorType === "api-key-missing") {
+          errorMsg = errorText
+        } else if (response.status === 429) {
+          errorMsg = "Превышен лимит запросов. Пожалуйста, подождите минуту и попробуйте снова."
+        } else {
+          errorMsg = errorText || "Извините, произошла ошибка. Попробуйте ещё раз."
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiMessageId
+              ? { ...m, content: errorMsg, isStreaming: false }
+              : m
+          )
+        )
+        return
       }
 
       const reader = response.body?.getReader()
@@ -141,7 +160,7 @@ export default function AIPage() {
           m.id === aiMessageId
             ? {
                 ...m,
-                content: "Извините, произошла ошибка. Попробуйте ещё раз.",
+                content: "Извините, произошла ошибка соединения. Проверьте подключение к интернету и попробуйте ещё раз.",
                 isStreaming: false,
               }
             : m
@@ -172,7 +191,7 @@ export default function AIPage() {
         {apiStatus && !apiStatus.configured && (
           <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>Демо-режим: добавьте OPENROUTER_API_KEY в .env.local для работы с AI</span>
+            <span>Добавьте OPENROUTER_API_KEY в .env.local для работы с AI. Ключ можно получить на openrouter.ai/keys</span>
           </div>
         )}
         {apiStatus?.configured && (
