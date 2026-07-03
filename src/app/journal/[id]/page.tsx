@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Edit3, Trash2, Copy, Download, Calendar, Tag, Brain, TrendingDown, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import type { JournalEntry } from "@/types"
 import { DEMO_ENTRIES, EMOTION_ICONS } from "@/lib/demo-data"
+import { useJournalStore } from "@/stores/journal"
 
 type EntryWithDistortions = JournalEntry & { distortions: string[] }
 
@@ -18,13 +19,20 @@ export default function JournalDetailPage() {
   const params = useParams()
   const id = params.id as string
 
+  const storeEntries = useJournalStore((s) => s.entries)
+  const removeEntry = useJournalStore((s) => s.removeEntry)
+
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
   const initialEntry = useMemo(() => {
-    return DEMO_ENTRIES.find((e) => e.id === id) || null
-  }, [id])
+    const storeEntry = storeEntries.find((e) => e.id === id)
+    if (storeEntry) return storeEntry as EntryWithDistortions
+    const demoEntry = DEMO_ENTRIES.find((e) => e.id === id)
+    if (demoEntry) return demoEntry as EntryWithDistortions
+    return null
+  }, [id, storeEntries])
 
   const [entry, setEntry] = useState<EntryWithDistortions | null>(initialEntry)
   const [editData, setEditData] = useState<EntryWithDistortions | null>(initialEntry)
@@ -37,23 +45,13 @@ export default function JournalDetailPage() {
   }
 
   const handleDelete = () => {
+    const isDemo = DEMO_ENTRIES.some((d) => d.id === id)
+    if (!isDemo) {
+      removeEntry(id)
+    }
     setShowDeleteDialog(false)
     router.push("/journal")
   }
-
-  const handleExport = useCallback(async () => {
-    if (!entry) return
-    setIsExporting(true)
-    try {
-      const { generateEntryPDF, downloadBlob } = await import("@/lib/pdf/generator")
-      const blob = await generateEntryPDF(entry)
-      downloadBlob(blob, `cbt-os-entry-${entry.id}.pdf`)
-    } catch (err) {
-      console.error("Export failed:", err)
-    } finally {
-      setIsExporting(false)
-    }
-  }, [entry])
 
   if (!entry) {
     return (
@@ -90,7 +88,7 @@ export default function JournalDetailPage() {
             <Copy className="h-4 w-4 mr-1" />
             Дублировать
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
+          <Button variant="outline" size="sm" onClick={() => {}} disabled>
             {isExporting ? (
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
             ) : (

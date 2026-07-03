@@ -52,7 +52,7 @@ export default function DashboardPage() {
   const [selectedMood, setSelectedMood] = useState<number | undefined>(undefined)
   const [showToast, setShowToast] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(false)
-  const [entries, setEntries] = useState(DEMO_ENTRIES)
+  const [entries] = useState(DEMO_ENTRIES)
 
   const streak = useMemo(() => calculateStreak(entries), [entries])
   const weeklyData = useMemo(() => getWeeklyData(entries), [entries])
@@ -311,18 +311,20 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-sm font-semibold">AI-инсайт</p>
                 </div>
-                <Badge variant="secondary" className="text-[10px]">
-                  {latestInsight?.is_read ? "Прочитано" : "Новый"}
-                </Badge>
+                {latestInsight && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {latestInsight.is_read ? "Прочитано" : "Новый"}
+                  </Badge>
+                )}
               </div>
               <p className="mb-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                {latestInsight?.content || "Пока нет инсайтов"}
+                {latestInsight?.content || "Инсайты появятся после нескольких записей в дневнике"}
               </p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2">
                   <span className="text-xs">💡</span>
                   <p className="text-[11px] text-muted-foreground">
-                    {weekStats.topDistortion ? `Паттерн: ${weekStats.topDistortion.toLowerCase()}` : "Пока нет паттернов"}
+                    {weekStats.topDistortion ? `Паттерн: ${weekStats.topDistortion.toLowerCase()}` : "Паттерны появятся позже"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2">
@@ -364,7 +366,7 @@ export default function DashboardPage() {
           >
             <h3 className="mb-3 text-sm font-semibold text-deep-charcoal">Последняя активность</h3>
             <div className="space-y-3">
-              {recentEntries.slice(0, 3).map((entry, i) => (
+              {recentEntries.length > 0 ? recentEntries.slice(0, 3).map((entry, i) => (
                 <div key={entry.id} className="flex items-center gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
                     <BookOpen className="h-4 w-4 text-blue-500" />
@@ -375,7 +377,11 @@ export default function DashboardPage() {
                   </div>
                   <Clock className="h-3 w-3 text-muted-foreground" />
                 </div>
-              ))}
+              )) : (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Здесь появятся ваши последние записи
+                </p>
+              )}
             </div>
           </motion.div>
         </div>
@@ -396,7 +402,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {recentEntries.map((entry, i) => (
+              {recentEntries.length > 0 ? recentEntries.map((entry, i) => (
                 <motion.div
                   key={entry.id}
                   initial={{ opacity: 0, x: -8 }}
@@ -422,7 +428,18 @@ export default function DashboardPage() {
                     <ChevronRight className="mt-1 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </motion.div>
-              ))}
+              )) : (
+                <div className="text-center py-8">
+                  <BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-2">Пока нет записей</p>
+                  <Link href="/journal/new">
+                    <GradientButton size="sm" className="gap-2">
+                      <Plus className="h-3.5 w-3.5" />
+                      Создать первую запись
+                    </GradientButton>
+                  </Link>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

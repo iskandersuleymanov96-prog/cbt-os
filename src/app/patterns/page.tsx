@@ -39,7 +39,7 @@ export default function PatternsPage() {
             </Link>
           }
           example={{
-            label: "Какие паттерны мы ищем:",
+            label: "Какие паттерны ищет AI:",
             items: [
               "Повторяющиеся автоматические мысли",
               "Эмоциональные триггеры",

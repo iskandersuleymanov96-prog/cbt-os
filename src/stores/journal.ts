@@ -11,6 +11,7 @@ interface JournalState {
   addEntry: (entry: JournalEntry) => void
   updateEntry: (id: string, data: Partial<JournalEntry>) => void
   removeEntry: (id: string) => void
+  removeAllEntries: () => void
   duplicateEntry: (id: string) => JournalEntry | null
   setCurrentEntry: (entry: JournalEntry | null) => void
   setLoading: (loading: boolean) => void
@@ -43,6 +44,8 @@ export const useJournalStore = create<JournalState>((set, get) => ({
       entries: state.entries.filter((e) => e.id !== id),
       currentEntry: state.currentEntry?.id === id ? null : state.currentEntry,
     })),
+  removeAllEntries: () =>
+    set({ entries: [], currentEntry: null }),
   duplicateEntry: (id) => {
     const state = get()
     const original = state.entries.find((e) => e.id === id)
