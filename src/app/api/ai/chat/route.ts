@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_API_KEY ? "openai/gpt-4o-mini" : "gpt-4o-mini",
+        model: process.env.OPENROUTER_API_KEY ? "deepseek/deepseek-chat" : "gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...history.map((msg: { role: string; content: string }) => ({

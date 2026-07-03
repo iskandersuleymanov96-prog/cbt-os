@@ -55,7 +55,7 @@ export default function DashboardLayout({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border/30 glass-strong transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:translate-x-0 lg:static lg:z-auto",
-          sidebarOpen ? "translate-x-0 shadow-floating" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0 shadow-floating" : "-translate-x-full invisible lg:visible"
         )}
       >
         <div className="flex h-full flex-col">

@@ -2,12 +2,15 @@
 
 import { useState, useMemo, Suspense } from "react"
 import dynamic from "next/dynamic"
+import Link from "next/link"
 import {
   TrendingUp, Flame, BookOpen,
   Brain, Download
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { GradientButton } from "@/components/ui/gradient-button"
 import {
   DEMO_ENTRIES,
   getWeeklyData,
@@ -48,6 +51,29 @@ export default function AnalyticsPage() {
       0
     )
   }, [entries])
+
+  if (entries.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-deep-charcoal">Аналитика</h1>
+          <p className="text-muted-foreground">Ваш прогресс и динамика</p>
+        </div>
+        <EmptyState
+          icon="📊"
+          title="Пока нет данных для анализа"
+          description="Создайте несколько записей в дневнике, чтобы увидеть статистику, графики и тенденции."
+          action={
+            <Link href="/journal/new">
+              <GradientButton size="md" className="gap-2">
+                Создать первую запись
+              </GradientButton>
+            </Link>
+          }
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

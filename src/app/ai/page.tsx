@@ -1,10 +1,16 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Send, Sparkles, Bot, User, Loader2 } from "lucide-react"
+import { Send, Sparkles, Bot, User, Loader2, AlertCircle } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+
+interface APIStatus {
+  configured: boolean
+  provider: string
+  model: string
+}
 
 const quickPrompts = [
   "Проанализируй моё настроение за неделю",
@@ -34,8 +40,16 @@ export default function AIPage() {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [apiStatus, setApiStatus] = useState<APIStatus | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    fetch("/api/ai/status")
+      .then((res) => res.json())
+      .then(setApiStatus)
+      .catch(() => setApiStatus({ configured: false, provider: "none", model: "demo" }))
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -155,10 +169,21 @@ export default function AIPage() {
       >
         <h1 className="text-2xl font-bold text-deep-charcoal">ИИ-рефлексия</h1>
         <p className="text-muted-foreground">Персональные инсайты на основе ваших записей</p>
+        {apiStatus && !apiStatus.configured && (
+          <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>Демо-режим: добавьте OPENROUTER_API_KEY в .env.local для работы с AI</span>
+          </div>
+        )}
+        {apiStatus?.configured && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Подключено: {apiStatus.provider} • {apiStatus.model}
+          </p>
+        )}
       </motion.div>
 
       {/* Quick Prompts */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
+      <div className="flex flex-nowrap gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
         {quickPrompts.map((prompt, i) => (
           <Button
             key={i}

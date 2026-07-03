@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { MoodPicker } from "@/components/ui/mood-picker"
 import { StatCard } from "@/components/ui/stat-card"
 import { PageHeader } from "@/components/ui/page-header"
+import { Button } from "@/components/ui/button"
 import { GradientButton } from "@/components/ui/gradient-button"
 import { StreakCounter } from "@/components/ui/streak-counter"
 import { ProgressRing } from "@/components/ui/progress-ring"
@@ -21,6 +22,7 @@ import { SuccessToast } from "@/components/ui/success-toast"
 import { InstallPrompt } from "@/components/ui/install-prompt"
 import { NotificationBanner } from "@/components/ui/notification-banner"
 import { isSupported, requestPermission } from "@/lib/notifications/service"
+import { useFormattedDate } from "@/hooks/use-client-date"
 import {
   DEMO_ENTRIES,
   EMOTION_ICONS,
@@ -52,7 +54,13 @@ export default function DashboardPage() {
   const [selectedMood, setSelectedMood] = useState<number | undefined>(undefined)
   const [showToast, setShowToast] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(false)
-  const [entries, setEntries] = useState(DEMO_ENTRIES)
+  const [entries] = useState(DEMO_ENTRIES)
+  const [mounted, setMounted] = useState(false)
+  const todayStr = useFormattedDate({ weekday: "long", day: "numeric", month: "long" })
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const streak = useMemo(() => calculateStreak(entries), [entries])
   const weeklyData = useMemo(() => getWeeklyData(entries), [entries])
@@ -60,6 +68,7 @@ export default function DashboardPage() {
   const weekStats = useMemo(() => getWeekStats(entries), [entries])
 
   const recentEntries = useMemo(() => {
+    if (!mounted) return []
     return [...entries]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 3)
@@ -82,7 +91,7 @@ export default function DashboardPage() {
           stress: e.stress,
         }
       })
-  }, [entries])
+  }, [entries, mounted])
 
   const latestInsight = useMemo(() => {
     return [...DEMO_INSIGHTS].sort(
@@ -139,7 +148,7 @@ export default function DashboardPage() {
       <motion.div variants={itemVariants}>
         <PageHeader
           title={`Привет! 👋`}
-          description={`Сегодня, ${new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}`}
+          description={todayStr ? `Сегодня, ${todayStr}` : "Загрузка..."}
           action={
             <Link href="/journal/new">
               <GradientButton size="md" className="gap-2 shadow-lg shadow-primary/20">
@@ -272,30 +281,44 @@ export default function DashboardPage() {
                   </span>
                 </div>
               </div>
-              <div className="flex items-end gap-2">
-                {weeklyData.map((day, i) => (
-                  <motion.div
-                    key={day.day}
-                    className="flex flex-1 flex-col items-center gap-1.5"
-                    initial={{ opacity: 0, scaleY: 0 }}
-                    animate={{ opacity: 1, scaleY: 1 }}
-                    transition={{ delay: 0.3 + i * 0.05, duration: 0.4 }}
-                    style={{ transformOrigin: "bottom" }}
-                  >
-                    <div className="flex w-full flex-col gap-1">
-                      <div
-                        className="w-full rounded-full bg-gradient-to-t from-primary/40 to-primary/20"
-                        style={{ height: `${day.mood * 5}px` }}
-                      />
-                      <div
-                        className="w-full rounded-full bg-gradient-to-t from-red-300/60 to-red-200/40"
-                        style={{ height: `${day.stress * 4}px` }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-medium text-muted-foreground">{day.day}</span>
-                  </motion.div>
-                ))}
-              </div>
+              {weeklyData.some((d) => d.mood > 0 || d.stress > 0) ? (
+                <div className="flex items-end gap-2">
+                  {weeklyData.map((day, i) => (
+                    <motion.div
+                      key={day.day}
+                      className="flex flex-1 flex-col items-center gap-1.5"
+                      initial={{ opacity: 0, scaleY: 0 }}
+                      animate={{ opacity: 1, scaleY: 1 }}
+                      transition={{ delay: 0.3 + i * 0.05, duration: 0.4 }}
+                      style={{ transformOrigin: "bottom" }}
+                    >
+                      <div className="flex w-full flex-col gap-1">
+                        <div
+                          className="w-full rounded-full bg-gradient-to-t from-primary/40 to-primary/20"
+                          style={{ height: `${day.mood * 5}px` }}
+                        />
+                        <div
+                          className="w-full rounded-full bg-gradient-to-t from-red-300/60 to-red-200/40"
+                          style={{ height: `${day.stress * 4}px` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-medium text-muted-foreground">{day.day}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <TrendingUp className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                  <p className="text-sm font-medium text-deep-charcoal">Начните вести дневник, чтобы увидеть аналитику</p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-3">Записывайте настроение и стресс каждый день</p>
+                  <Link href="/diary/new">
+                    <Button size="sm" className="gap-1.5 gradient-primary text-white">
+                      <Plus className="h-3.5 w-3.5" />
+                      Первая запись
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -311,18 +334,20 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-sm font-semibold">AI-инсайт</p>
                 </div>
-                <Badge variant="secondary" className="text-[10px]">
-                  {latestInsight?.is_read ? "Прочитано" : "Новый"}
-                </Badge>
+                {latestInsight && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {latestInsight.is_read ? "Прочитано" : "Новый"}
+                  </Badge>
+                )}
               </div>
               <p className="mb-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                {latestInsight?.content || "Пока нет инсайтов"}
+                {latestInsight?.content || "Инсайты появятся после нескольких записей в дневнике"}
               </p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2">
                   <span className="text-xs">💡</span>
                   <p className="text-[11px] text-muted-foreground">
-                    {weekStats.topDistortion ? `Паттерн: ${weekStats.topDistortion.toLowerCase()}` : "Пока нет паттернов"}
+                    {weekStats.topDistortion ? `Паттерн: ${weekStats.topDistortion.toLowerCase()}` : "Паттерны появятся позже"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2">
@@ -364,7 +389,7 @@ export default function DashboardPage() {
           >
             <h3 className="mb-3 text-sm font-semibold text-deep-charcoal">Последняя активность</h3>
             <div className="space-y-3">
-              {recentEntries.slice(0, 3).map((entry, i) => (
+              {recentEntries.length > 0 ? recentEntries.slice(0, 3).map((entry, i) => (
                 <div key={entry.id} className="flex items-center gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
                     <BookOpen className="h-4 w-4 text-blue-500" />
@@ -375,7 +400,11 @@ export default function DashboardPage() {
                   </div>
                   <Clock className="h-3 w-3 text-muted-foreground" />
                 </div>
-              ))}
+              )) : (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Здесь появятся ваши последние записи
+                </p>
+              )}
             </div>
           </motion.div>
         </div>
@@ -396,7 +425,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {recentEntries.map((entry, i) => (
+              {recentEntries.length > 0 ? recentEntries.map((entry, i) => (
                 <motion.div
                   key={entry.id}
                   initial={{ opacity: 0, x: -8 }}
@@ -422,7 +451,18 @@ export default function DashboardPage() {
                     <ChevronRight className="mt-1 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </motion.div>
-              ))}
+              )) : (
+                <div className="text-center py-8">
+                  <BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-2">Пока нет записей</p>
+                  <Link href="/journal/new">
+                    <GradientButton size="sm" className="gap-2">
+                      <Plus className="h-3.5 w-3.5" />
+                      Создать первую запись
+                    </GradientButton>
+                  </Link>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

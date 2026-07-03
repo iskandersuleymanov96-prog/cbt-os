@@ -12,11 +12,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { EmptyState } from "@/components/ui/empty-state"
+import { GradientButton } from "@/components/ui/gradient-button"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DEMO_INSIGHTS } from "@/lib/demo-data"
+import { Plus } from "lucide-react"
 import type { AIInsight } from "@/types"
 
 const typeConfig: Record<string, { label: string; icon: typeof Sparkles; color: string; bgColor: string }> = {
@@ -150,12 +153,19 @@ export default function AIInsightsPage() {
 
         <TabsContent value={activeTab} className="space-y-3 mt-4">
           {filteredInsights.length === 0 ? (
-            <div className="text-center py-12">
-              <Sparkles className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">
-                {searchQuery ? "Ничего не найдено" : "Нет инсайтов в этой категории"}
-              </p>
-            </div>
+            <EmptyState
+              icon="✨"
+              title="Пока нет инсайтов"
+              description="AI-инсайты появятся после нескольких записей в дневнике. Чем больше записей — тем точнее рекомендации."
+              action={
+                <Link href="/journal/new">
+                  <GradientButton size="md" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Создать запись
+                  </GradientButton>
+                </Link>
+              }
+            />
           ) : (
             filteredInsights.map((insight) => {
               const config = typeConfig[insight.type]
