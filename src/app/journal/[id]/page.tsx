@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import type { JournalEntry } from "@/types"
-import { DEMO_ENTRIES, EMOTION_ICONS } from "@/lib/demo-data"
+import { EMOTION_ICONS } from "@/lib/demo-data"
 import { useJournalStore } from "@/stores/journal"
 
 type EntryWithDistortions = JournalEntry & { distortions: string[] }
@@ -29,8 +29,6 @@ export default function JournalDetailPage() {
   const initialEntry = useMemo(() => {
     const storeEntry = storeEntries.find((e) => e.id === id)
     if (storeEntry) return storeEntry as EntryWithDistortions
-    const demoEntry = DEMO_ENTRIES.find((e) => e.id === id)
-    if (demoEntry) return demoEntry as EntryWithDistortions
     return null
   }, [id, storeEntries])
 
@@ -45,10 +43,7 @@ export default function JournalDetailPage() {
   }
 
   const handleDelete = () => {
-    const isDemo = DEMO_ENTRIES.some((d) => d.id === id)
-    if (!isDemo) {
-      removeEntry(id)
-    }
+    removeEntry(id)
     setShowDeleteDialog(false)
     router.push("/journal")
   }

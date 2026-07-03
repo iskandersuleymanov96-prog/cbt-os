@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { GradientButton } from "@/components/ui/gradient-button"
 import {
-  DEMO_ENTRIES,
   getWeeklyData,
   getYearInPixels,
   getEmotionDistribution,
@@ -20,6 +19,7 @@ import {
   getGrowthPercentage,
   calculateStreak,
 } from "@/lib/demo-data"
+import { useJournalStore } from "@/stores/journal"
 
 const ChartsSection = dynamic(
   () => import("./charts-section"),
@@ -38,7 +38,7 @@ const ChartsSection = dynamic(
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState("week")
 
-  const entries = DEMO_ENTRIES
+  const entries = useJournalStore((s) => s.entries)
   const weeklyData = useMemo(() => getWeeklyData(entries), [entries])
   const emotionDistribution = useMemo(() => getEmotionDistribution(entries), [entries])
   const distortionFrequency = useMemo(() => getDistortionFrequency(entries), [entries])

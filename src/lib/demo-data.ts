@@ -1,30 +1,5 @@
 import type { JournalEntry, Pattern, AIInsight } from "@/types"
 
-export const DEMO_ENTRIES: (JournalEntry & { distortions: string[] })[] = [
-  {
-    id: "example-1",
-    user_id: "demo",
-    created_at: "2026-07-01T10:00:00Z",
-    situation: "Это пример того, как заполнять дневник. Нажмите + чтобы создать свою запись.",
-    emotion: "Спокойствие",
-    emotion_intensity: 2,
-    automatic_thought: "Пример автоматической мысли — что вы подумали в ситуации",
-    body_sensations: "Пример физических ощущений",
-    behavior: "Пример поведения — что вы сделали",
-    evidence_supporting: "Пример доказательств в поддержку мысли",
-    evidence_against: "Пример доказательств против мысли",
-    alternative_thought: "Пример альтернативной, более сбалансированной мысли",
-    new_emotion_intensity: 1,
-    lessons_learned: "Пример урока — что вы поняли",
-    mood: 4,
-    energy: 3,
-    stress: 2,
-    anxiety: 1,
-    tags: ["пример"],
-    distortions: [],
-  },
-]
-
 export const EMOTION_ICONS: Record<string, string> = {
   "Тревога": "😟",
   "Спокойствие": "😌",
@@ -39,16 +14,6 @@ export const EMOTION_ICONS: Record<string, string> = {
   "Грусть": "😢",
   "Злость": "😠",
 }
-
-export const DEMO_PATTERNS: Record<string, { id: string; name: string; frequency: number; strength: number; firstSeen: string; lastSeen: string }[]> = {
-  thought: [],
-  emotion: [],
-  trigger: [],
-  distortion: [],
-  behavior: [],
-}
-
-export const DEMO_INSIGHTS: AIInsight[] = []
 
 export const PATTERN_TYPE_LABELS: Record<string, string> = {
   thought: "Мысли",

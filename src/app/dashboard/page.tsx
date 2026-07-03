@@ -24,14 +24,13 @@ import { NotificationBanner } from "@/components/ui/notification-banner"
 import { isSupported, requestPermission } from "@/lib/notifications/service"
 import { useFormattedDate } from "@/hooks/use-client-date"
 import {
-  DEMO_ENTRIES,
   EMOTION_ICONS,
-  DEMO_INSIGHTS,
   calculateStreak,
   getWeeklyData,
   getTodayStats,
   getWeekStats,
 } from "@/lib/demo-data"
+import { useJournalStore } from "@/stores/journal"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -54,9 +53,10 @@ export default function DashboardPage() {
   const [selectedMood, setSelectedMood] = useState<number | undefined>(undefined)
   const [showToast, setShowToast] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(false)
-  const [entries] = useState(DEMO_ENTRIES)
   const [mounted, setMounted] = useState(false)
   const todayStr = useFormattedDate({ weekday: "long", day: "numeric", month: "long" })
+
+  const entries = useJournalStore((s) => s.entries)
 
   useEffect(() => {
     setMounted(true)
@@ -92,12 +92,6 @@ export default function DashboardPage() {
         }
       })
   }, [entries, mounted])
-
-  const latestInsight = useMemo(() => {
-    return [...DEMO_INSIGHTS].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )[0]
-  }, [])
 
   const totalDistortions = useMemo(() => {
     return entries.reduce(
@@ -334,14 +328,9 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-sm font-semibold">AI-инсайт</p>
                 </div>
-                {latestInsight && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {latestInsight.is_read ? "Прочитано" : "Новый"}
-                  </Badge>
-                )}
               </div>
               <p className="mb-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                {latestInsight?.content || "Инсайты появятся после нескольких записей в дневнике"}
+                Инсайты появятся после нескольких записей в дневнике
               </p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2">

@@ -9,14 +9,12 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmptyState } from "@/components/ui/empty-state"
 import { GradientButton } from "@/components/ui/gradient-button"
-import { DEMO_PATTERNS, PATTERN_TYPE_LABELS, PATTERN_TYPE_COLORS } from "@/lib/demo-data"
+import { PATTERN_TYPE_LABELS, PATTERN_TYPE_COLORS } from "@/lib/demo-data"
 
 export default function PatternsPage() {
   const [activeTab, setActiveTab] = useState("thought")
 
-  const hasAnyPatterns = useMemo(() => {
-    return Object.values(DEMO_PATTERNS).some((arr) => arr.length > 0)
-  }, [])
+  const hasAnyPatterns = false
 
   if (!hasAnyPatterns) {
     return (
@@ -62,74 +60,23 @@ export default function PatternsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start">
-          {Object.keys(DEMO_PATTERNS).map((type) => (
+          {Object.keys(PATTERN_TYPE_LABELS).map((type) => (
             <TabsTrigger key={type} value={type} className="gap-1">
               {PATTERN_TYPE_LABELS[type]}
               <Badge variant="secondary" className="ml-1 text-[10px]">
-                {DEMO_PATTERNS[type].length}
+                0
               </Badge>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {Object.entries(DEMO_PATTERNS).map(([type, items]) => (
+        {Object.keys(PATTERN_TYPE_LABELS).map((type) => (
           <TabsContent key={type} value={type} className="space-y-3 mt-4">
-            {items.length === 0 ? (
-              <EmptyState
-                icon="🔍"
-                title={`Нет паттернов типа «${PATTERN_TYPE_LABELS[type]}»`}
-                description="Продолжайте вести дневник, и мы обнаружим повторяющиеся модели."
-              />
-            ) : (
-              items.map((pattern, i) => (
-                <motion.div
-                  key={pattern.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                >
-                  <Link href={`/patterns/${pattern.id}`}>
-                    <Card className="glass-card transition-all hover:-translate-y-0.5 hover:card-shadow-hover cursor-pointer">
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-deep-charcoal">{pattern.name}</h3>
-                              <Badge className={PATTERN_TYPE_COLORS[type]}>
-                                {PATTERN_TYPE_LABELS[type]}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <TrendingUp className="h-3 w-3" />
-                                {pattern.frequency}×</span>
-                              <span className="flex items-center gap-1">
-                                <Eye className="h-3 w-3" />
-                                Сила: {pattern.strength}/10
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {new Date(pattern.lastSeen).toLocaleDateString("ru-RU")}
-                              </span>
-                            </div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground mt-1" />
-                        </div>
-                        {/* Strength bar */}
-                        <div className="mt-3">
-                          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full transition-all"
-                              style={{ width: `${pattern.strength * 10}%` }}
-                            />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </motion.div>
-              ))
-            )}
+            <EmptyState
+              icon="🔍"
+              title={`Нет паттернов типа «${PATTERN_TYPE_LABELS[type]}»`}
+              description="Продолжайте вести дневник, и мы обнаружим повторяющиеся модели."
+            />
           </TabsContent>
         ))}
       </Tabs>

@@ -18,7 +18,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DEMO_INSIGHTS } from "@/lib/demo-data"
 import { Plus } from "lucide-react"
 import type { AIInsight } from "@/types"
 
@@ -30,7 +29,7 @@ const typeConfig: Record<string, { label: string; icon: typeof Sparkles; color: 
 }
 
 export default function AIInsightsPage() {
-  const [insights, setInsights] = useState<AIInsight[]>(DEMO_INSIGHTS)
+  const [insights, setInsights] = useState<AIInsight[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedInsight, setSelectedInsight] = useState<AIInsight | null>(null)
