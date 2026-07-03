@@ -1,15 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import {
-  User, Palette, Bell, Sparkles, Shield, CreditCard,
-  ChevronRight, Clock, Download,
-  Upload, Database, Lock, Smartphone, Key, AlertTriangle,
-  Camera, FileText, CheckCircle2, Loader2, HardDrive,
-  RefreshCw, Eye, EyeOff
+  User, Palette, Bell, Sparkles, Database, AlertTriangle,
+  Camera, Loader2,
+  RefreshCw, Download, Upload, Trash2, Wifi, WifiOff,
 } from "lucide-react"
-import { isSupported, requestPermission } from "@/lib/notifications/service"
-import { scheduleReminder, scheduleWeeklySummary, cancelAll } from "@/lib/notifications/scheduler"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,19 +19,29 @@ import {
   DialogFooter, DialogDescription
 } from "@/components/ui/dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useTheme } from "@/components/theme-provider"
 import { useSettingsStore } from "@/stores/settings"
+import { useJournalStore } from "@/stores/journal"
 import { SuccessToast } from "@/components/ui/success-toast"
+import {
+  exportAsJSON, exportAsCSV, importFromJSON, importFromCSV, downloadFile
+} from "@/lib/data-management"
 
 const aiTopicOptions = [
   "Тревога", "Депрессия", "Стресс", "Отношения", "Работа",
   "Самооценка", "Перфекционизм", "Прокрастинация", "Сон", "Здоровье",
 ]
 
+interface AIStatus {
+  configured: boolean
+  provider: string
+  model: string | null
+}
+
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore()
   const [activeTab, setActiveTab] = useState("profile")
   const [showSaved, setShowSaved] = useState(false)
+  const [toastMsg, setToastMsg] = useState<{ title: string; message: string } | null>(null)
 
   // Profile
   const [profileName, setProfileName] = useState("Пользователь")
@@ -44,7 +50,6 @@ export default function SettingsPage() {
   const [profileTimezone, setProfileTimezone] = useState("Europe/Moscow")
 
   // Preferences
-  const { theme } = useTheme()
   const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(settings.font_size)
   const [compactMode, setCompactMode] = useState(settings.compact_mode)
 
@@ -58,20 +63,17 @@ export default function SettingsPage() {
   const [aiIntensity, setAiIntensity] = useState<"gentle" | "moderate" | "intensive">(settings.ai_coaching_intensity)
   const [aiStyle, setAiStyle] = useState<"concise" | "detailed" | "socratic">(settings.ai_response_style)
   const [aiTopics, setAiTopics] = useState<string[]>(settings.ai_focus_topics)
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null)
+  const [aiStatusLoading, setAiStatusLoading] = useState(false)
 
-  // Privacy
-  const [dataRetention, setDataRetention] = useState(settings.data_retention_days)
-  const [encryption, setEncryption] = useState(settings.encryption_enabled)
+  // Data
+  const [showClearDialog, setShowClearDialog] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [clearConfirm, setClearConfirm] = useState("")
 
-  // Password
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [show2FA, setShow2FA] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-
-  // Data export
-  const [exportFormat, setExportFormat] = useState<"json" | "csv" | "pdf">("json")
-  const [isExporting, setIsExporting] = useState(false)
+  const storeEntries = useJournalStore((s) => s.entries)
+  const addEntry = useJournalStore((s) => s.addEntry)
+  const removeAllEntries = useJournalStore((s) => s.removeAllEntries)
 
   const toggleAiTopic = (topic: string) => {
     setAiTopics((prev) =>
@@ -90,49 +92,52 @@ export default function SettingsPage() {
       ai_coaching_intensity: aiIntensity,
       ai_response_style: aiStyle,
       ai_focus_topics: aiTopics,
-      data_retention_days: dataRetention,
-      encryption_enabled: encryption,
     })
     setShowSaved(true)
-  }, [fontSize, compactMode, notificationsEnabled, reminderTime, emailNotifications, weeklySummary, aiIntensity, aiStyle, aiTopics, dataRetention, encryption, updateSettings])
+  }, [fontSize, compactMode, notificationsEnabled, reminderTime, emailNotifications, weeklySummary, aiIntensity, aiStyle, aiTopics, updateSettings])
 
-  const handleExport = async () => {
-    setIsExporting(true)
+  const checkAIStatus = useCallback(async () => {
+    setAiStatusLoading(true)
     try {
-      const date = new Date().toISOString().slice(0, 10)
-      const filename = `cbt-os-export-${date}`
-
-      if (exportFormat === "json") {
-        const res = await fetch("/api/export/all?format=json")
-        const data = await res.json()
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${filename}.json`
-        a.click()
-        URL.revokeObjectURL(url)
-      } else if (exportFormat === "csv") {
-        const res = await fetch("/api/export/all?format=csv")
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${filename}.csv`
-        a.click()
-        URL.revokeObjectURL(url)
-      } else if (exportFormat === "pdf") {
-        const { generateAllEntriesPDF, downloadBlob } = await import("@/lib/pdf/generator")
-        const entriesRes = await fetch("/api/export/all?format=json")
-        const { entries } = await entriesRes.json()
-        const blob = await generateAllEntriesPDF(entries)
-        downloadBlob(blob, `${filename}.pdf`)
-      }
-    } catch (err) {
-      console.error("Export failed:", err)
+      const res = await fetch("/api/ai/status")
+      const data = await res.json()
+      setAiStatus(data)
+    } catch {
+      setAiStatus({ configured: false, provider: "none", model: null })
     } finally {
-      setIsExporting(false)
+      setAiStatusLoading(false)
     }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/ai/status")
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled) setAiStatus(data) })
+      .catch(() => { if (!cancelled) setAiStatus({ configured: false, provider: "none", model: null }) })
+    return () => { cancelled = true }
+  }, [])
+
+  const handleExportJSON = () => {
+    if (storeEntries.length === 0) {
+      setToastMsg({ title: "Нет данных", message: "Экспортируть нечего" })
+      return
+    }
+    const json = exportAsJSON(storeEntries)
+    const date = new Date().toISOString().slice(0, 10)
+    downloadFile(json, `cbt-os-export-${date}.json`, "application/json")
+    setToastMsg({ title: "Экспорт завершён", message: `${storeEntries.length} записей в JSON` })
+  }
+
+  const handleExportCSV = () => {
+    if (storeEntries.length === 0) {
+      setToastMsg({ title: "Нет данных", message: "Экспортируть нечего" })
+      return
+    }
+    const csv = exportAsCSV(storeEntries)
+    const date = new Date().toISOString().slice(0, 10)
+    downloadFile(csv, `cbt-os-export-${date}.csv`, "text/csv;charset=utf-8")
+    setToastMsg({ title: "Экспорт завершён", message: `${storeEntries.length} записей в CSV` })
   }
 
   const handleImport = () => {
@@ -142,46 +147,62 @@ export default function SettingsPage() {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
+      setIsImporting(true)
       try {
         const text = await file.text()
-        if (file.name.endsWith(".json")) {
-          const data = JSON.parse(text)
-          console.log("Imported data:", data)
-          setShowSaved(true)
+        const isJSON = file.name.endsWith(".json")
+        const result = isJSON ? importFromJSON(text) : importFromCSV(text)
+
+        if (result.entries.length > 0) {
+          const existingIds = new Set(storeEntries.map((se) => se.id))
+          const newEntries = result.entries.filter((ne) => !existingIds.has(ne.id))
+          newEntries.forEach((entry) => addEntry(entry))
+          setToastMsg({
+            title: "Импорт завершён",
+            message: `Добавлено ${newEntries.length} записей${result.errors.length > 0 ? `, ${result.errors.length} ошибок` : ""}`,
+          })
+        } else if (result.errors.length > 0) {
+          setToastMsg({ title: "Ошибка импорта", message: result.errors[0] })
         } else {
-          console.log("CSV import:", text.slice(0, 200))
-          setShowSaved(true)
+          setToastMsg({ title: "Нет новых записей", message: "Все записи уже существуют" })
         }
-      } catch (err) {
-        console.error("Import failed:", err)
+      } catch {
+        setToastMsg({ title: "Ошибка", message: "Не удалось прочитать файл" })
+      } finally {
+        setIsImporting(false)
       }
     }
     input.click()
   }
 
-  const handleBackup = () => {
-    const data = {
-      timestamp: new Date().toISOString(),
-      settings: JSON.parse(JSON.stringify(settings)),
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `cbt-os-backup-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    setShowSaved(true)
+  const handleClearAll = () => {
+    if (clearConfirm !== "УДАЛИТЬ") return
+    removeAllEntries()
+    setShowClearDialog(false)
+    setClearConfirm("")
+    setToastMsg({ title: "Данные удалены", message: "Все записи дневника удалены" })
   }
+
+  const dataSizeKB = useMemo(() => {
+    const json = JSON.stringify(storeEntries)
+    return (new Blob([json]).size / 1024).toFixed(1)
+  }, [storeEntries])
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <SuccessToast
-        show={showSaved}
+        show={!!showSaved}
         type="saved"
         title="Настройки сохранены"
         message="Ваши изменения применены"
         onClose={() => setShowSaved(false)}
+      />
+      <SuccessToast
+        show={!!toastMsg}
+        type="saved"
+        title={toastMsg?.title || ""}
+        message={toastMsg?.message}
+        onClose={() => setToastMsg(null)}
       />
       <div>
         <h1 className="text-2xl font-bold text-deep-charcoal">Настройки</h1>
@@ -204,15 +225,6 @@ export default function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="data" className="gap-1">
             <Database className="h-3.5 w-3.5" /> Данные
-          </TabsTrigger>
-          <TabsTrigger value="privacy" className="gap-1">
-            <Shield className="h-3.5 w-3.5" /> Приватность
-          </TabsTrigger>
-          <TabsTrigger value="subscription" className="gap-1">
-            <CreditCard className="h-3.5 w-3.5" /> Подписка
-          </TabsTrigger>
-          <TabsTrigger value="account" className="gap-1">
-            <Key className="h-3.5 w-3.5" /> Аккаунт
           </TabsTrigger>
         </TabsList>
 
@@ -335,7 +347,7 @@ export default function SettingsPage() {
                   <p className="font-medium">Компактный режим</p>
                   <p className="text-sm text-muted-foreground">Уменьшить отступы и размер элементов</p>
                 </div>
-                  <button
+                <button
                   onClick={() => setCompactMode(!compactMode)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     compactMode ? "bg-primary" : "bg-secondary"
@@ -389,7 +401,6 @@ export default function SettingsPage() {
                   <div>
                     <Label htmlFor="reminder-time">Время напоминания</Label>
                     <div className="flex items-center gap-2 mt-1">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
                       <Input
                         id="reminder-time"
                         type="time"
@@ -458,6 +469,49 @@ export default function SettingsPage() {
 
         {/* AI Settings */}
         <TabsContent value="ai" className="space-y-4 mt-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Подключение AI</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
+                <div className="flex items-center gap-3">
+                  {aiStatus?.configured ? (
+                    <Wifi className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <WifiOff className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium">
+                      {aiStatus?.configured ? "AI подключён" : "AI не настроен"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {aiStatus?.configured
+                        ? `${aiStatus.provider} • ${aiStatus.model}`
+                        : "Добавьте OPENROUTER_API_KEY в .env.local"}
+                    </p>
+                  </div>
+                </div>
+                <Badge variant={aiStatus?.configured ? "default" : "secondary"}>
+                  {aiStatus?.configured ? "Активен" : "Неактивен"}
+                </Badge>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={checkAIStatus}
+                disabled={aiStatusLoading}
+              >
+                {aiStatusLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Проверить подключение
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="text-lg">Настройки AI-коучинга</CardTitle>
@@ -531,6 +585,7 @@ export default function SettingsPage() {
                   ))}
                 </div>
               </div>
+              <Button onClick={saveSettings} className="w-full">Сохранить настройки AI</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -539,36 +594,32 @@ export default function SettingsPage() {
         <TabsContent value="data" className="space-y-4 mt-4">
           <Card className="glass-card">
             <CardHeader>
+              <CardTitle className="text-lg">Статистика данных</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-3 rounded-xl bg-secondary/50">
+                  <p className="text-2xl font-bold text-deep-charcoal">{storeEntries.length}</p>
+                  <p className="text-xs text-muted-foreground">Записей в дневнике</p>
+                </div>
+                <div className="p-3 rounded-xl bg-secondary/50">
+                  <p className="text-2xl font-bold text-deep-charcoal">{dataSizeKB} КБ</p>
+                  <p className="text-xs text-muted-foreground">Объём данных</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader>
               <CardTitle className="text-lg">Экспорт данных</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                {([
-                  { value: "json" as const, label: "JSON", icon: FileText, desc: "Полные данные" },
-                  { value: "csv" as const, label: "CSV", icon: FileText, desc: "Таблица для Excel" },
-                  { value: "pdf" as const, label: "PDF", icon: FileText, desc: "Документ" },
-                ]).map((f) => (
-                  <button
-                    key={f.value}
-                    onClick={() => setExportFormat(f.value)}
-                    className={`flex flex-col items-center gap-2 rounded-xl p-4 transition-all ${
-                      exportFormat === f.value
-                        ? "bg-primary/10 ring-2 ring-primary"
-                        : "bg-secondary hover:bg-secondary/80"
-                    }`}
-                  >
-                    <f.icon className="h-5 w-5" />
-                    <span className="text-sm font-medium">{f.label}</span>
-                    <span className="text-[10px] text-muted-foreground">{f.desc}</span>
-                  </button>
-                ))}
-              </div>
-              <Button onClick={handleExport} disabled={isExporting} className="w-full gap-2">
-                {isExporting ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Экспорт...</>
-                ) : (
-                  <><Download className="h-4 w-4" /> Экспорт ({exportFormat.toUpperCase()})</>
-                )}
+            <CardContent className="space-y-3">
+              <Button variant="outline" className="w-full gap-2" onClick={handleExportJSON} disabled={storeEntries.length === 0}>
+                <Download className="h-4 w-4" /> Экспорт в JSON
+              </Button>
+              <Button variant="outline" className="w-full gap-2" onClick={handleExportCSV} disabled={storeEntries.length === 0}>
+                <Download className="h-4 w-4" /> Экспорт в CSV
               </Button>
             </CardContent>
           </Card>
@@ -578,330 +629,89 @@ export default function SettingsPage() {
               <CardTitle className="text-lg">Импорт данных</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full gap-2" onClick={handleImport}>
-                <Upload className="h-4 w-4" /> Импорт из файла
+              <Button variant="outline" className="w-full gap-2" onClick={handleImport} disabled={isImporting}>
+                {isImporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                Импорт из файла
               </Button>
               <p className="text-xs text-muted-foreground mt-2 text-center">
-                Поддерживаются форматы JSON и CSV из CBT OS
+                Поддерживаются форматы JSON и CSV
               </p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-lg">Резервное копирование</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
-                <div className="flex items-center gap-3">
-                  <HardDrive className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Последний бэкап</p>
-                    <p className="text-xs text-muted-foreground">18 июня 2026, 23:45</p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="bg-green-50 text-green-700">Активен</Badge>
-              </div>
-              <Button variant="outline" className="w-full gap-2" onClick={handleBackup}>
-                <RefreshCw className="h-4 w-4" /> Создать бэкап сейчас
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-lg">Статус синхронизации</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-green-800">Все синхронизировано</p>
-                  <p className="text-xs text-green-600">Последняя синхронизация: 5 мин назад</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Privacy */}
-        <TabsContent value="privacy" className="space-y-4 mt-4">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-lg">Хранение данных</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Срок хранения данных</Label>
-                <div className="grid grid-cols-3 gap-3 mt-2">
-                  {([
-                    { value: 90, label: "3 месяца" },
-                    { value: 180, label: "6 месяцев" },
-                    { value: 365, label: "1 год" },
-                  ]).map((r) => (
-                    <button
-                      key={r.value}
-                      onClick={() => setDataRetention(r.value)}
-                      className={`rounded-xl px-4 py-3 text-sm font-medium transition-all ${
-                        dataRetention === r.value
-                          ? "bg-primary/10 ring-2 ring-primary"
-                          : "bg-secondary hover:bg-secondary/80"
-                      }`}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Шифрование данных</p>
-                  <p className="text-sm text-muted-foreground">AES-256 шифрование всех записей</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={encryption ? "default" : "secondary"} className="gap-1">
-                    <Lock className="h-3 w-3" />
-                    {encryption ? "Включено" : "Выключено"}
-                  </Badge>
-                  <button
-                    onClick={() => setEncryption(!encryption)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      encryption ? "bg-primary" : "bg-secondary"
-                    }`}
-                    role="switch"
-                    aria-checked={encryption}
-                    aria-label="Шифрование данных"
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        encryption ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-lg">Подключённые устройства</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { name: "MacBook Pro", system: "macOS 15.0", lastActive: "Сейчас", current: true },
-                { name: "iPhone 15", system: "iOS 19.0", lastActive: "2 часа назад", current: false },
-              ].map((device) => (
-                <div key={device.name} className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
-                  <div className="flex items-center gap-3">
-                    <Smartphone className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">{device.name}</p>
-                        {device.current && <Badge variant="outline" className="text-[10px]">Текущее</Badge>}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{device.system} • {device.lastActive}</p>
-                    </div>
-                  </div>
-                  {!device.current && (
-                    <Button variant="ghost" size="sm" className="text-destructive text-xs">
-                      Отвязать
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Subscription */}
-        <TabsContent value="subscription" className="space-y-4 mt-4">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-lg">Текущий план</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5">
-                <div>
-                  <p className="font-semibold text-deep-charcoal">Free</p>
-                  <p className="text-sm text-muted-foreground">5 записей в месяц</p>
-                </div>
-                <Badge variant="outline">Текущий</Badge>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-deep-charcoal">3</p>
-                  <p className="text-xs text-muted-foreground">Записи этом месяце</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-deep-charcoal">12</p>
-                  <p className="text-xs text-muted-foreground">Всего записей</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-deep-charcoal">5</p>
-                  <p className="text-xs text-muted-foreground">Инсайтов</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-primary">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">Pro</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-3xl font-bold text-deep-charcoal">499₽<span className="text-sm font-normal text-muted-foreground">/мес</span></p>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Без ограничений на записи</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Полная карта паттернов</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> AI-рефлексия и инсайты</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Расширенная аналитика</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Все упражнения</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Голосовой дневник</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Экспорт данных</li>
-              </ul>
-              <Button className="w-full gap-2">
-                <Sparkles className="h-4 w-4" />
-                Обновиться до Pro
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Account */}
-        <TabsContent value="account" className="space-y-4 mt-4">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-lg">Безопасность</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-between" onClick={() => setShowPasswordDialog(true)}>
-                <span className="flex items-center gap-2"><Key className="h-4 w-4" /> Изменить пароль</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" className="w-full justify-between" onClick={() => setShow2FA(true)}>
-                <span className="flex items-center gap-2"><Lock className="h-4 w-4" /> Двухфакторная аутентификация</span>
-                <Badge variant="outline" className="text-[10px]">Выкл</Badge>
-              </Button>
             </CardContent>
           </Card>
 
           <Card className="glass-card border-destructive/50">
             <CardHeader>
               <CardTitle className="text-lg text-destructive flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                Опасная зона
+                <Trash2 className="h-5 w-5" />
+                Удалить все данные
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Button variant="destructive" className="w-full" onClick={() => setShowDeleteDialog(true)}>
-                Удалить аккаунт
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => setShowClearDialog(true)}
+                disabled={storeEntries.length === 0}
+              >
+                Очистить все записи
               </Button>
               <p className="text-xs text-muted-foreground mt-2 text-center">
-                Это действие необратимо. Все данные будут удалены.
+                Это действие необратимо. Рекомендуется сначала сделать экспорт.
               </p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Password Dialog */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Изменить пароль</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="current-password">Текущий пароль</Label>
-              <div className="relative mt-1">
-                <Input id="current-password" type={showPassword ? "text" : "password"} placeholder="Введите текущий пароль" />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="new-password">Новый пароль</Label>
-              <Input id="new-password" type="password" placeholder="Минимум 8 символов" className="mt-1" />
-            </div>
-            <div>
-              <Label htmlFor="confirm-password">Подтвердите пароль</Label>
-              <Input id="confirm-password" type="password" placeholder="Повторите новый пароль" className="mt-1" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>Отмена</Button>
-            <Button onClick={() => setShowPasswordDialog(false)}>Изменить пароль</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 2FA Dialog */}
-      <Dialog open={show2FA} onOpenChange={setShow2FA}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Двухфакторная аутентификация</DialogTitle>
-            <DialogDescription>
-              Добавьте дополнительный уровень безопасности к вашему аккаунту.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-secondary/50 text-center">
-              <Lock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                2FA ещё не настроена. Используйте приложение-аутентификатор (Google Authenticator, Authy) для сканирования QR-кода.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShow2FA(false)}>Отмена</Button>
-            <Button onClick={() => setShow2FA(false)}>Настроить</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Account Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Clear Data Dialog */}
+      <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              Удалить аккаунт?
+              Удалить все данные?
             </DialogTitle>
             <DialogDescription>
-              Это действие необратимо. Все ваши данные, записи, паттерны и настройки будут удалены навсегда.
+              Все записи дневника будут удалены навсегда. Это действие нельзя отменить.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="p-3 rounded-xl bg-destructive/5 border border-destructive/20">
               <p className="text-sm text-destructive font-medium">Будет удалено:</p>
               <ul className="text-sm text-muted-foreground mt-1 space-y-1">
-                <li>• Все записи дневника (12 записей)</li>
-                <li>• AI-инсайты и рекомендации</li>
-                <li>• Паттерны и аналитика</li>
-                <li>• Профиль и настройки</li>
+                <li>• {storeEntries.length} записей дневника</li>
+                <li>• Все данные и теги</li>
               </ul>
             </div>
             <div>
-              <Label htmlFor="confirm-delete">Введите «УДАЛИТЬ» для подтверждения</Label>
-              <Input id="confirm-delete" placeholder="УДАЛИТЬ" className="mt-1" />
+              <Label htmlFor="confirm-clear">Введите «УДАЛИТЬ» для подтверждения</Label>
+              <Input
+                id="confirm-clear"
+                placeholder="УДАЛИТЬ"
+                value={clearConfirm}
+                onChange={(e) => setClearConfirm(e.target.value)}
+                className="mt-1"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Отмена</Button>
-            <Button variant="destructive" onClick={() => setShowDeleteDialog(false)}>Удалить аккаунт</Button>
+            <Button variant="outline" onClick={() => { setShowClearDialog(false); setClearConfirm("") }}>Отмена</Button>
+            <Button
+              variant="destructive"
+              onClick={handleClearAll}
+              disabled={clearConfirm !== "УДАЛИТЬ"}
+            >
+              Удалить всё
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   )
 }
+
+
